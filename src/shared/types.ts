@@ -90,6 +90,19 @@ export interface ReleaseReport {
   changelog: ChangelogEntry
 }
 
+export interface PlanQuestion {
+  id: string
+  question: string
+  options: { label: string; description?: string }[]
+  multiSelect: boolean
+  allowCustom: boolean
+}
+
+export interface DiscussionEntry {
+  question: string
+  answer: string
+}
+
 export interface Task {
   id: number
   projectId: number
@@ -106,9 +119,19 @@ export interface Task {
   iteration: number
   plan?: string
   planApproved: boolean
+  /** Ask the planner to discuss options before writing the plan. */
+  discuss: boolean
+  /** Questions from the planner waiting for the user. */
+  questions?: PlanQuestion[]
+  /** Answered questions, oldest first. */
+  discussion: DiscussionEntry[]
+  /** How many times the planner has asked questions for this task. */
+  questionRounds?: number
   replanComment?: string
   reworkComment?: string
   branch?: string
+  /** The branch name was typed by the user (kept on reject). */
+  branchCustom?: boolean
   baseBranch?: string
   /** Merge commit on the base branch once the task is accepted (the task branch is deleted then). */
   mergeCommit?: string
@@ -138,6 +161,9 @@ export interface NewTaskInput {
   type: TaskType
   priority: Priority
   status: 'backlog' | 'queue'
+  discuss: boolean
+  /** Custom branch name; generated when empty. */
+  branch?: string
 }
 
 export type LogKind = 'sys' | 'text' | 'tool' | 'tool_result' | 'error' | 'result'
@@ -179,6 +205,7 @@ export interface Settings {
   waitForReview: boolean
   claudePath: string
   lastProjectId?: number
+  tourSeen: { welcome: boolean; board: boolean }
 }
 
 export interface RateLimitInfo {

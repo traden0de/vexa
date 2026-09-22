@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { simpleGit, type SimpleGit } from 'simple-git'
 import type { DiffFile, GitBranch, GitCommit, GitStatus } from '@shared/types'
+export { slugify } from '@shared/slug'
 
 export class GitService {
   readonly git: SimpleGit
@@ -66,8 +67,18 @@ export class GitService {
     await this.git.checkout(name)
   }
 
-  async createBranch(name: string, from: string): Promise<void> {
-    await this.git.checkout(['-b', name, from])
+  async createBranch(name: string, from: string, checkout = true): Promise<void> {
+    if (checkout) await this.git.checkout(['-b', name, from])
+    else await this.git.branch([name, from])
+  }
+
+  async isValidBranchName(name: string): Promise<boolean> {
+    try {
+      await this.git.raw(['check-ref-format', '--branch', name])
+      return !name.startsWith('-')
+    } catch {
+      return false
+    }
   }
 
   async deleteBranch(name: string, force = false): Promise<void> {
@@ -223,23 +234,4 @@ export class GitService {
     const diff = staged.trim() ? staged : await this.git.diff()
     return diff.length > maxChars ? diff.slice(0, maxChars) + '\n… (truncated)' : diff
   }
-}
-
-export function slugify(s: string): string {
-  const translit: Record<string, string> = {
-    а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l',
-    м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh',
-    щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya'
-  }
-  return (
-    s
-      .toLowerCase()
-      .split('')
-      .map((c) => translit[c] ?? c)
-      .join('')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40)
-      .replace(/-+$/, '') || 'task'
-  )
 }

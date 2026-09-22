@@ -32,7 +32,8 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultModel: '',
   autoResume: true,
   waitForReview: true,
-  claudePath: ''
+  claudePath: '',
+  tourSeen: { welcome: false, board: false }
 }
 
 export class Db {
@@ -89,12 +90,12 @@ export class Db {
       projectId === undefined
         ? this.db.prepare('SELECT data FROM tasks').all()
         : this.db.prepare('SELECT data FROM tasks WHERE project_id = ?').all(projectId)
-    return (rows as { data: string }[]).map((r) => JSON.parse(r.data) as Task)
+    return (rows as { data: string }[]).map((r) => normalizeTask(JSON.parse(r.data)))
   }
 
   getTask(id: number): Task | undefined {
     const r = this.db.prepare('SELECT data FROM tasks WHERE id = ?').get(id) as { data: string } | undefined
-    return r ? (JSON.parse(r.data) as Task) : undefined
+    return r ? (normalizeTask(JSON.parse(r.data))) : undefined
   }
 
   insertTask(t: Omit<Task, 'id'>): Task {
@@ -148,6 +149,13 @@ export class Db {
     for (const [k, v] of Object.entries(patch)) stmt.run(k, JSON.stringify(v))
     return this.getSettings()
   }
+}
+
+/** Fills fields added after a task was stored. */
+function normalizeTask(t: Task): Task {
+  t.discuss ??= false
+  t.discussion ??= []
+  return t
 }
 
 function rowToProject(r: any): Project {

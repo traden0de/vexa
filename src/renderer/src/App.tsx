@@ -22,6 +22,7 @@ import {
 import appIcon from '../../../build/icon.png'
 import { call } from './api'
 import { isDark, useProject, useStore, type View } from './store'
+import { startTour } from './tour'
 import { Board } from './components/Board'
 import { TaskDrawer } from './components/TaskDrawer'
 import { TaskDialog } from './components/TaskDialog'
@@ -42,8 +43,19 @@ export function App(): ReactNode {
     void init()
   }, [init])
 
-  if (!ready) return null
   const v: View = projectId == null && view !== 'settings' ? 'home' : view
+  const tourSeen = useStore((s) => s.settings?.tourSeen)
+
+  // First-run guided tour: the welcome part on the home screen, the board part on the first opened project.
+  useEffect(() => {
+    if (!ready || !tourSeen) return
+    const part = v === 'home' && !tourSeen.welcome ? 'welcome' : v === 'board' && !tourSeen.board ? 'board' : null
+    if (!part) return
+    const timer = setTimeout(() => startTour(part), 600)
+    return () => clearTimeout(timer)
+  }, [ready, v, tourSeen])
+
+  if (!ready) return null
 
   return (
     <div className="app">
@@ -79,7 +91,7 @@ function Rail({ view }: { view: View }): ReactNode {
     ['project', <FileText key="p" />]
   ]
   return (
-    <nav className="rail">
+    <nav className="rail" data-tour="rail">
       <img className="logo" src={appIcon} alt="Veltrix" />
       {items.map(([v, icon]) => (
         <button
@@ -88,13 +100,19 @@ function Rail({ view }: { view: View }): ReactNode {
           disabled={v !== 'home' && !hasProject}
           onClick={() => setView(v)}
           aria-label={t(`nav_${v}`)}
+          data-tour={`nav-${v}`}
         >
           {icon}
           <span className="tip">{t(`nav_${v}`)}</span>
         </button>
       ))}
       <div className="spacer" />
-      <button className={`rail-btn ${view === 'settings' ? 'on' : ''}`} onClick={() => setView('settings')} aria-label={t('nav_settings')}>
+      <button
+        className={`rail-btn ${view === 'settings' ? 'on' : ''}`}
+        onClick={() => setView('settings')}
+        aria-label={t('nav_settings')}
+        data-tour="nav-settings"
+      >
         <Gear />
         <span className="tip">{t('nav_settings')}</span>
       </button>
@@ -144,7 +162,7 @@ function Topbar(): ReactNode {
         </span>
       )}
       <div className="grow" />
-      <div className="queue">
+      <div className="queue" data-tour="queue">
         <span className={`dot ${limited ? 'warn' : queue.running ? 'live' : ''}`} />
         {limited
           ? t('queue_limit', { time: new Date(queue.pausedUntil!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
@@ -157,7 +175,7 @@ function Topbar(): ReactNode {
         </button>
       </div>
       {project && (
-        <button className="btn primary" onClick={() => openTaskDialog()}>
+        <button className="btn primary" onClick={() => openTaskDialog()} data-tour="new-task">
           <Plus /> {t('new_task')}
         </button>
       )}
@@ -186,7 +204,7 @@ function StatusBar(): ReactNode {
   const five = rl?.fiveHour != null ? Math.round(rl.fiveHour * 100) : null
   const seven = rl?.sevenDay != null ? Math.round(rl.sevenDay * 100) : null
   return (
-    <footer className="statusbar">
+    <footer className="statusbar" data-tour="statusbar">
       <span>
         <span className={`dot ${active ? 'live' : ''}`} />
         {active

@@ -1,10 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownToLine, ArrowUpFromLine, Check, GitBranch, LoaderCircle, RefreshCw, Sparkles, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Check, GitBranch, LoaderCircle, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import type { GitBranch as Branch, GitCommit, GitStatus } from '@shared/types'
 import { call } from '../api'
 import { useStore } from '../store'
-import { Modal } from '../components/ui'
+import { AskDialog, Modal } from '../components/ui'
 
 const DiffView = lazy(() => import('../components/DiffView').then((m) => ({ default: m.DiffView })))
 
@@ -21,6 +21,15 @@ export function GitView(): ReactNode {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [diffFile, setDiffFile] = useState<string | null>(null)
+  const [newBranch, setNewBranch] = useState(false)
+  const [deleting, setDeleting] = useState<{ name: string; force: boolean } | null>(null)
+  const tasks = useStore((s) => s.tasks)
+  // Branches of tasks still in the pipeline are managed by Veltrix, not deleted by hand.
+  const taskBranches = new Set(
+    Object.values(tasks)
+      .filter((x) => x.branch && x.status !== 'done' && x.status !== 'backlog')
+      .map((x) => x.branch!)
+  )
 
   const load = useCallback(async () => {
     const s = await call('git:status', pid)
@@ -167,24 +176,44 @@ export function GitView(): ReactNode {
           )}
         </div>
         <div className="panel">
-          <h3>{t('git_branches')}</h3>
+          <h3>
+            {t('git_branches')}
+            <span className="grow" />
+            <button className="btn sm" disabled={!!busy || running || !status.branch} onClick={() => setNewBranch(true)}>
+              <Plus /> {t('new_branch')}
+            </button>
+          </h3>
           <div className="list" style={{ maxHeight: 420, overflow: 'auto' }}>
-            {branches.map((b) => (
-              <div className="li" key={b.name}>
-                <GitBranch />
-                <span className="mono ell" style={{ fontSize: 12.5, fontWeight: b.current ? 600 : 400 }}>
-                  {b.name}
-                </span>
-                {b.current && <span className="refbr">HEAD</span>}
-                <span className="grow" />
-                <span className="sub2">{b.commit.slice(0, 7)}</span>
-                {!b.current && (
-                  <button className="btn sm" disabled={!!busy || running} onClick={() => op('co', () => call('git:checkout', pid, b.name))}>
-                    {t('checkout')}
-                  </button>
-                )}
-              </div>
-            ))}
+            {branches.map((b) => {
+              const owned = taskBranches.has(b.name)
+              return (
+                <div className="li" key={b.name}>
+                  <GitBranch />
+                  <span className="mono ell" style={{ fontSize: 12.5, fontWeight: b.current ? 600 : 400 }}>
+                    {b.name}
+                  </span>
+                  {b.current && <span className="refbr">HEAD</span>}
+                  <span className="grow" />
+                  <span className="sub2">{b.commit.slice(0, 7)}</span>
+                  {!b.current && (
+                    <>
+                      <button className="btn sm" disabled={!!busy || running} onClick={() => op('co', () => call('git:checkout', pid, b.name))}>
+                        {t('checkout')}
+                      </button>
+                      <button
+                        className="btn sm ghost icon"
+                        disabled={!!busy || owned}
+                        title={owned ? t('branch_of_task') : t('delete')}
+                        aria-label={`${t('delete')} ${b.name}`}
+                        onClick={() => setDeleting({ name: b.name, force: false })}
+                      >
+                        <Trash2 />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -226,6 +255,48 @@ export function GitView(): ReactNode {
         </div>
       </div>
       {diffFile && <FileDiffModal pid={pid} file={diffFile} onClose={() => setDiffFile(null)} />}
+      {newBranch && (
+        <NewBranchDialog
+          branches={branches}
+          current={status.branch ?? ''}
+          onClose={() => setNewBranch(false)}
+          onCreate={async (name, from, checkout) => {
+            const ok = await run(async () => {
+              await call('git:createBranch', pid, name, from, checkout)
+              return true
+            }, t('toast_branch_created', { name }))
+            if (!ok) return false
+            await load()
+            return true
+          }}
+        />
+      )}
+      {deleting && (
+        <AskDialog
+          key={`${deleting.name}-${deleting.force}`}
+          title={t('delete_branch_title', { name: deleting.name })}
+          body={deleting.force ? t('delete_branch_force') : t('delete_branch_body')}
+          confirm={deleting.force ? t('delete_anyway') : t('delete')}
+          danger
+          onClose={() => setDeleting(null)}
+          onConfirm={async () => {
+            const { name, force } = deleting
+            try {
+              await call('git:deleteBranch', pid, name, force)
+              useStore.getState().toast(t('toast_branch_deleted', { name }))
+              await load()
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e)
+              // git refuses -d for unmerged branches: offer a forced delete instead.
+              if (!force && /not fully merged/i.test(msg)) {
+                setTimeout(() => setDeleting({ name, force: true }), 0)
+                return
+              }
+              useStore.getState().toast(msg, true)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -256,6 +327,69 @@ function FileDiffModal({ pid, file, onClose }: { pid: number; file: string; onCl
           )}
         </div>
       </div>
+    </Modal>
+  )
+}
+
+function NewBranchDialog({
+  branches,
+  current,
+  onClose,
+  onCreate
+}: {
+  branches: Branch[]
+  current: string
+  onClose: () => void
+  onCreate: (name: string, from: string, checkout: boolean) => Promise<boolean>
+}): ReactNode {
+  const { t } = useTranslation()
+  const [name, setName] = useState('')
+  const [from, setFrom] = useState(current)
+  const [checkout, setCheckout] = useState(true)
+  const [busy, setBusy] = useState(false)
+  return (
+    <Modal onClose={onClose}>
+      <form
+        className="dialog"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          if (!name.trim()) return
+          setBusy(true)
+          const ok = await onCreate(name.trim(), from, checkout)
+          setBusy(false)
+          if (ok) onClose()
+        }}
+      >
+        <header>{t('nb_title')}</header>
+        <div className="body">
+          <div className="field">
+            <label htmlFor="nb-name">{t('nb_name')}</label>
+            <input id="nb-name" className="inp mono" autoFocus placeholder="feature/my-branch" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="nb-from">{t('nb_from')}</label>
+            <select id="nb-from" className="inp mono" value={from} onChange={(e) => setFrom(e.target.value)}>
+              {branches.map((b) => (
+                <option key={b.name} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="checkline" htmlFor="nb-checkout">
+            <input id="nb-checkout" type="checkbox" checked={checkout} onChange={(e) => setCheckout(e.target.checked)} />
+            <span>{t('nb_checkout')}</span>
+          </label>
+        </div>
+        <footer>
+          <button type="button" className="btn ghost" onClick={onClose}>
+            {t('cancel')}
+          </button>
+          <button type="submit" className="btn primary" disabled={busy || !name.trim()}>
+            <Plus /> {t('create')}
+          </button>
+        </footer>
+      </form>
     </Modal>
   )
 }

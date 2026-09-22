@@ -10,6 +10,8 @@ plan → approval → code → tests → review → security → release → mer
 - `npm run build` — production bundles into `out/`
 - `npm run build:win` — Windows installer into `dist/`
 - `node e2e/smoke.mjs <projectPath> <shotsDir>` — launches the built app and screenshots every screen (set `VELTRIX_USER_DATA` to a temp dir)
+- `node e2e/features.mjs <projectPath> <shotsDir>` — checks the onboarding tour, branch create/delete and view scrolling (fresh `VELTRIX_USER_DATA`)
+- `node e2e/full-cycle.mjs <sandbox> <shotsDir>` — one task through the whole pipeline on real Claude (`DISCUSS=1` for the questions flow); never point it at a real project
 
 ## Layout
 - `src/main` — Electron main process
@@ -18,7 +20,7 @@ plan → approval → code → tests → review → security → release → mer
   - `git.ts` (simple-git), `version.ts` (semver + version files + CHANGELOG), `agents.ts` (markdown agent files), `db.ts` (`node:sqlite`)
   - `ipc.ts` — all IPC handlers; the contract lives in `src/shared/ipc.ts`
 - `src/preload` — `window.veltrix` bridge (`invoke` / `on`), contextIsolation on, sandbox on
-- `src/renderer` — React UI, Zustand store (`store.ts`), i18n in `locales/{ru,en}.json`, plain CSS with design tokens in `styles.css`
+- `src/renderer` — React UI, onboarding tour in `tour.ts` (driver.js; targets are `data-tour` attributes), Zustand store (`store.ts`), i18n in `locales/{ru,en}.json`, plain CSS with design tokens in `styles.css`
 - `resources/agents/*.md` — built-in agent definitions (YAML frontmatter + system prompt)
 
 ## Conventions

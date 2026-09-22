@@ -6,6 +6,8 @@ import {
   GitBranch,
   GitMerge,
   Info,
+  MessageCircleQuestion,
+  Send,
   LoaderCircle,
   Pencil,
   Play,
@@ -16,7 +18,7 @@ import {
   Undo2,
   X
 } from 'lucide-react'
-import { STAGES, STAGE_AGENT, type Bump, type DiffFile, type LogEvent, type Task } from '@shared/types'
+import { STAGES, STAGE_AGENT, type Bump, type DiffFile, type LogEvent, type PlanQuestion, type Task } from '@shared/types'
 import { call, on } from '../api'
 import { useStore, type DrawerTab } from '../store'
 import { AGENT_COLORS, AskDialog, Markdown, TypeTag, formatCost, formatDuration } from './ui'
@@ -38,12 +40,15 @@ export function TaskDrawer(): ReactNode {
   const [ask, setAsk] = useState<Ask>(null)
   const [bump, setBump] = useState<Bump>('patch')
   const [planDraft, setPlanDraft] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Answers>({})
 
   useEffect(() => {
     setBump(task?.bump ?? 'patch')
     setPlanDraft(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id, task?.bump])
+
+  useEffect(() => setAnswers({}), [task?.id, task?.questionRounds])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -106,6 +111,26 @@ export function TaskDrawer(): ReactNode {
         <span className="chip">{t('waiting_queue')}</span>
         <span className="grow" />
         <button className="btn" onClick={() => act(() => call('tasks:move', task.id, 'backlog'))}>
+          <Undo2 /> {t('c_backlog')}
+        </button>
+      </>
+    )
+  } else if (task.status === 'approval' && task.questions?.length) {
+    footer = (
+      <>
+        <button
+          className="btn primary"
+          onClick={() =>
+            act(async () => {
+              await call('tasks:answer', task.id, answerStrings(task.questions!, answers))
+              close()
+            }, t('toast_answered'))
+          }
+        >
+          <Send /> {t('answer')}
+        </button>
+        <span className="grow" />
+        <button className="btn ghost" onClick={() => act(() => call('tasks:move', task.id, 'backlog'))}>
           <Undo2 /> {t('c_backlog')}
         </button>
       </>
@@ -223,7 +248,8 @@ export function TaskDrawer(): ReactNode {
             <TypeTag type={task.type} />
             {task.branch && (
               <span className="chip">
-                <GitBranch /> {task.branch} {t('branch_into')} {task.baseBranch}
+                <GitBranch /> {task.branch}
+                {task.baseBranch && ` ${t('branch_into')} ${task.baseBranch}`}
               </span>
             )}
             {task.iteration > 0 && (
@@ -269,7 +295,9 @@ export function TaskDrawer(): ReactNode {
         ) : (
           <div className="dr-b">
             {activeTab === 'details' && <DetailsTab task={task} />}
-            {activeTab === 'plan' && <PlanTab task={task} draft={planDraft} setDraft={setPlanDraft} />}
+            {activeTab === 'plan' && (
+              <PlanTab task={task} draft={planDraft} setDraft={setPlanDraft} answers={answers} setAnswers={setAnswers} />
+            )}
             {activeTab === 'reports' && <ReportsTab task={task} />}
             {activeTab === 'release' && <ReleaseTab task={task} bump={bump} setBump={setBump} />}
           </div>
@@ -448,11 +476,31 @@ function LogRow({ e, result }: { e: LogEvent; result?: LogEvent }): ReactNode {
   )
 }
 
-function PlanTab({ task, draft, setDraft }: { task: Task; draft: string | null; setDraft: (s: string | null) => void }): ReactNode {
+function PlanTab({
+  task,
+  draft,
+  setDraft,
+  answers,
+  setAnswers
+}: {
+  task: Task
+  draft: string | null
+  setDraft: (s: string | null) => void
+  answers: Answers
+  setAnswers: (a: Answers) => void
+}): ReactNode {
   const { t } = useTranslation()
+  if (task.questions?.length)
+    return (
+      <>
+        <Discussion task={task} />
+        <QuestionsForm questions={task.questions} answers={answers} setAnswers={setAnswers} />
+      </>
+    )
   if (!task.plan) return <p className="faint">{t('plan_none')}</p>
   return (
     <>
+      <Discussion task={task} />
       {task.status === 'approval' && (
         <div className="callout">
           <Info />
@@ -677,5 +725,108 @@ function ReleaseTab({ task, bump, setBump }: { task: Task; bump: Bump; setBump: 
       </div>
       <pre className="pre">{preview}</pre>
     </>
+  )
+}
+
+// ---------------------------------------------------------------- planner questions
+
+type Answers = Record<string, { picked: string[]; custom: string }>
+
+/** Turns the form state into one answer string per question. */
+function answerStrings(questions: PlanQuestion[], answers: Answers): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const q of questions) {
+    const a = answers[q.id]
+    out[q.id] = [...(a?.picked ?? []), a?.custom.trim() ?? ''].filter(Boolean).join('; ')
+  }
+  return out
+}
+
+function QuestionsForm({
+  questions,
+  answers,
+  setAnswers
+}: {
+  questions: PlanQuestion[]
+  answers: Answers
+  setAnswers: (a: Answers) => void
+}): ReactNode {
+  const { t } = useTranslation()
+  const update = (id: string, patch: Partial<Answers[string]>): void => {
+    const cur = answers[id] ?? { picked: [], custom: '' }
+    setAnswers({ ...answers, [id]: { ...cur, ...patch } })
+  }
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      <div className="callout">
+        <MessageCircleQuestion />
+        <div>
+          <b>{t('questions_title')}</b>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {t('questions_hint')}
+          </div>
+        </div>
+      </div>
+      {questions.map((q) => {
+        const a = answers[q.id] ?? { picked: [], custom: '' }
+        return (
+          <fieldset key={q.id} className="question">
+            <legend>{q.question}</legend>
+            {q.options.map((o) => {
+              const checked = a.picked.includes(o.label)
+              return (
+                <label key={o.label} className={`option ${checked ? 'on' : ''}`}>
+                  <input
+                    type={q.multiSelect ? 'checkbox' : 'radio'}
+                    name={`q-${q.id}`}
+                    checked={checked}
+                    onChange={() =>
+                      update(q.id, {
+                        picked: q.multiSelect
+                          ? checked
+                            ? a.picked.filter((x) => x !== o.label)
+                            : [...a.picked, o.label]
+                          : [o.label]
+                      })
+                    }
+                  />
+                  <span>
+                    {o.label}
+                    {o.description && <small>{o.description}</small>}
+                  </span>
+                </label>
+              )
+            })}
+            {q.allowCustom && (
+              <input
+                id={`q-${q.id}-custom`}
+                className="inp"
+                placeholder={q.options.length ? t('other_answer') : t('other_ph')}
+                value={a.custom}
+                onChange={(e) => update(q.id, { custom: e.target.value, ...(q.multiSelect || !e.target.value ? {} : { picked: [] }) })}
+              />
+            )}
+          </fieldset>
+        )
+      })}
+    </div>
+  )
+}
+
+function Discussion({ task }: { task: Task }): ReactNode {
+  const { t } = useTranslation()
+  if (!task.discussion.length) return null
+  return (
+    <details className="discussion" open={!!task.questions?.length}>
+      <summary>
+        {t('discussion')} · {task.discussion.length}
+      </summary>
+      {task.discussion.map((d, i) => (
+        <div key={i} className="qa">
+          <div className="q">{d.question}</div>
+          <div className="a">{d.answer}</div>
+        </div>
+      ))}
+    </details>
   )
 }

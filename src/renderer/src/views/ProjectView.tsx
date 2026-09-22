@@ -63,8 +63,11 @@ export function ProjectView(): ReactNode {
                 <button
                   className="btn primary"
                   onClick={async () => {
-                    const ok = await run(() => call('project:writeClaudeMd', project.id, draft), t('toast_saved'))
-                    if (ok !== undefined) {
+                    const ok = await run(async () => {
+                      await call('project:writeClaudeMd', project.id, draft)
+                      return true
+                    }, t('toast_saved'))
+                    if (ok) {
                       setMd(draft)
                       setDraft(null)
                     }

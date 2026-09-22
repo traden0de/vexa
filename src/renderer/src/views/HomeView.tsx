@@ -36,7 +36,7 @@ export function HomeView(): ReactNode {
         <p>{t('home_sub')}</p>
       </div>
       <div className="row" style={{ marginBottom: 24 }}>
-        <button className="btn primary" onClick={openFolder}>
+        <button className="btn primary" onClick={openFolder} data-tour="open-folder">
           <FolderOpen /> {t('open_folder')}
         </button>
         <button className="btn" onClick={() => setCloning(true)}>
@@ -86,7 +86,7 @@ export function HomeView(): ReactNode {
             </div>
           )}
         </div>
-        <div className="panel">
+        <div className="panel" data-tour="env">
           <h3>
             {t('env')}
             <span className="grow" />

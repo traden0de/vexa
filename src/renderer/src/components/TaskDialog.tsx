@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Priority, TaskType } from '@shared/types'
 import { call } from '../api'
 import { useStore } from '../store'
+import { autoBranchName } from '@shared/slug'
 import { Modal, Seg } from './ui'
 
 export function TaskDialog(): ReactNode {
@@ -15,14 +16,18 @@ export function TaskDialog(): ReactNode {
   const [description, setDescription] = useState(edit?.description ?? '')
   const [type, setType] = useState<TaskType>(edit?.type ?? 'feature')
   const [priority, setPriority] = useState<Priority>(edit?.priority ?? 2)
+  const [discuss, setDiscuss] = useState(edit?.discuss ?? false)
+  const [branch, setBranch] = useState(edit?.branchCustom ? (edit.branch ?? '') : '')
+  const nextSeq = useStore((s) => Object.values(s.tasks).reduce((m, x) => Math.max(m, x.seq), 0) + 1)
+  const branchLocked = !!edit?.baseBranch
   const [busy, setBusy] = useState(false)
 
   const submit = async (status: 'backlog' | 'queue'): Promise<void> => {
     if (!title.trim()) return
     setBusy(true)
     const ok = edit
-      ? await run(() => call('tasks:update', edit.id, { title: title.trim(), description, type, priority }), t('toast_saved'))
-      : await run(() => call('tasks:create', { projectId, title, description, type, priority, status }), t('toast_created'))
+      ? await run(() => call('tasks:update', edit.id, { title: title.trim(), description, type, priority, discuss, ...(branchLocked ? {} : { branch }) }), t('toast_saved'))
+      : await run(() => call('tasks:create', { projectId, title, description, type, priority, status, discuss, branch: branch.trim() || undefined }), t('toast_created'))
     setBusy(false)
     if (ok) close()
   }
@@ -52,6 +57,28 @@ export function TaskDialog(): ReactNode {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+          <label className="checkline" htmlFor="nt-discuss">
+            <input id="nt-discuss" type="checkbox" checked={discuss} onChange={(e) => setDiscuss(e.target.checked)} />
+            <span>
+              {t('nt_discuss')}
+              <small>{t('nt_discuss_hint')}</small>
+            </span>
+          </label>
+          <div className="field">
+            <label htmlFor="nt-branch">{t('nt_branch')}</label>
+            <input
+              id="nt-branch"
+              className="inp mono"
+              style={{ fontSize: 12.5 }}
+              disabled={branchLocked}
+              placeholder={edit?.branch && !edit.branchCustom ? edit.branch : autoBranchName(edit?.seq ?? nextSeq, title || 'task')}
+              value={branchLocked ? (edit?.branch ?? '') : branch}
+              onChange={(e) => setBranch(e.target.value)}
+            />
+            <small className="faint" style={{ fontSize: 12 }}>
+              {branchLocked ? t('nt_branch_locked') : t('nt_branch_hint')}
+            </small>
           </div>
           <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
             <div className="field">

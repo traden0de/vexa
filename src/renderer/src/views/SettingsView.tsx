@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Compass } from 'lucide-react'
 import type { Settings } from '@shared/types'
 import { useStore } from '../store'
 import { Seg, Toggle } from '../components/ui'
@@ -9,6 +10,7 @@ export function SettingsView(): ReactNode {
   const settings = useStore((s) => s.settings)!
   const update = useStore((s) => s.updateSettings)
   const checkEnv = useStore((s) => s.checkEnv)
+  const setView = useStore((s) => s.setView)
   const [path, setPath] = useState(settings.claudePath)
   const [model, setModel] = useState(settings.defaultModel)
   useEffect(() => setPath(settings.claudePath), [settings.claudePath])
@@ -21,6 +23,25 @@ export function SettingsView(): ReactNode {
       <h1>{t('set_title')}</h1>
       <p className="sub" />
       <div className="panel">
+        <div className="set-row">
+          <div>
+            {t('tour_again')}
+            <p>{t('tour_again_d')}</p>
+          </div>
+          <div>
+            <button
+              className="btn"
+              onClick={async () => {
+                const hasProject = useStore.getState().projectId != null
+                const part = hasProject ? 'board' : 'welcome'
+                await update({ tourSeen: { ...settings.tourSeen, [part]: false } })
+                setView(hasProject ? 'board' : 'home')
+              }}
+            >
+              <Compass /> {t('tour_again')}
+            </button>
+          </div>
+        </div>
         <div className="set-row">
           <div>{t('lang')}</div>
           <Seg value={settings.lang} onChange={(lang) => set({ lang })} options={[{ value: 'ru', label: 'Русский' }, { value: 'en', label: 'English' }]} />

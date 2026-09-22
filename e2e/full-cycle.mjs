@@ -1,5 +1,6 @@
 // End-to-end run against the real `claude` CLI: drives the UI through one task's full cycle.
-// Usage: VELTRIX_USER_DATA=<tmp> node e2e/full-cycle.mjs <projectPath> <shotsDir>
+// Usage: VELTRIX_USER_DATA=<tmp> [DISCUSS=1] node e2e/full-cycle.mjs <projectPath> <shotsDir>
+// DISCUSS=1 ticks “Discuss before planning”, sets a custom branch and answers the planner's questions via the UI.
 import { _electron as electron } from 'playwright-core'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,16 +17,34 @@ await win.waitForSelector('.rail')
 const invoke = (ch, ...args) => win.evaluate(([c, a]) => window.veltrix.invoke(c, ...a), [ch, args])
 const shot = (name) => win.screenshot({ path: join(outDir, name + '.png') })
 
+const DISCUSS = !!process.env.DISCUSS
+const TITLE = DISCUSS ? 'Добавить функцию divide' : 'Добавить функцию multiply'
+const BRANCH = 'feature/divide'
+// Tours would cover the UI the script clicks.
+await invoke('settings:set', { tourSeen: { welcome: true, board: true } })
 const p = await invoke('projects:open', project)
 await win.reload()
 await win.waitForSelector('.board')
 
 // Create a task through the dialog
 await win.locator('.topbar .btn.primary').click()
-await win.fill('#nt-title', 'Добавить функцию multiply')
-await win.fill('#nt-desc', 'Добавь в src/math.js функцию multiply(a, b), возвращающую произведение, и тесты к ней.')
+await win.fill('#nt-title', TITLE)
+if (DISCUSS) {
+  await win.fill('#nt-desc', 'Добавь в src/math.js функцию divide(a, b) и тесты к ней.')
+  await win.check('#nt-discuss')
+  await win.fill('#nt-branch', BRANCH)
+} else {
+  await win.fill('#nt-desc', 'Добавь в src/math.js функцию multiply(a, b), возвращающую произведение, и тесты к ней.')
+}
 await shot('10-new-task')
 await win.locator('.dialog footer .btn.primary').click()
+for (let i = 0; !(await invoke('tasks:list', p.id)).length; i++) {
+  if (i > 30) {
+    await shot('10-create-failed')
+    throw new Error('task was not created: ' + (await win.locator('.toast').allInnerTexts()).join(' | '))
+  }
+  await win.waitForTimeout(500)
+}
 log('task created')
 
 const task = async () => (await invoke('tasks:list', p.id)).at(-1)
@@ -44,10 +63,28 @@ async function waitFor(statuses, timeoutMin, onTick) {
   throw new Error('timeout waiting for ' + statuses)
 }
 
-const openCard = () => win.locator('.card', { hasText: 'multiply' }).click({ timeout: 10000 })
+const openCard = () => win.locator('.card', { hasText: TITLE }).click({ timeout: 10000 })
 
 let t = await waitFor(['approval', 'failed'], 15)
 if (t.status === 'failed') throw new Error(t.error)
+for (let round = 1; t.questions?.length && round <= 3; round++) {
+  log('questions', JSON.stringify(t.questions.map((q) => [q.question, q.options.map((o) => o.label)])))
+  await openCard()
+  await win.waitForSelector('.question')
+  await win.waitForTimeout(500)
+  await shot('11-questions-' + round)
+  for (const q of t.questions) {
+    if (q.options.length) await win.locator('.question', { hasText: q.question }).locator('.option').first().click()
+    else await win.fill('#q-' + q.id + '-custom', 'На твоё усмотрение')
+  }
+  await shot('11-answered-' + round)
+  await win.locator('.dr-f .btn.primary').click()
+  log('answered round', round)
+  await win.waitForTimeout(1500)
+  t = await waitFor(['approval', 'failed'], 15, async (cur) => cur.status !== 'approval' || !cur.questions)
+  if (t.status === 'failed') throw new Error(t.error)
+}
+if (DISCUSS && !t.discussion.length) throw new Error('discuss mode produced no questions')
 await openCard()
 await win.waitForSelector('.drawer')
 await win.waitForTimeout(500)

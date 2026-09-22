@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { Task } from '@shared/types'
+import type { NewTaskInput, Task } from '@shared/types'
 import { AgentStore } from '../agents'
 import type { RunOptions, RunResult, Runner } from '../claude/runner'
 import { Db } from '../db'
@@ -37,6 +37,7 @@ function agentOf(o: RunOptions): Agent {
 }
 
 interface Script {
+  questionsFirst?: boolean
   testsPassOn?: number
   limitOn?: Agent
 }
@@ -61,7 +62,14 @@ function fakeRunner(script: Script, calls: { agent: Agent; opts: RunOptions }[])
     }
     switch (agent) {
       case 'planner':
-        return ok({ plan: '## Changes\n- add sum()', expectedBump: 'minor' })
+        if (script.questionsFirst && !opts.prompt.includes('Answers from the user'))
+          return ok({
+            kind: 'questions',
+            questions: [
+              { id: 'q1', question: 'Which style?', options: [{ label: 'Arrow' }, { label: 'Function' }], multiSelect: false, allowCustom: true }
+            ]
+          })
+        return ok({ kind: 'plan', plan: '## Changes\n- add sum()', expectedBump: 'minor' })
       case 'developer':
         writeFileSync(join(opts.cwd, 'sum.js'), `module.exports = (a, b) => a + b // ${calls.length}\n`)
         return ok()
@@ -111,13 +119,13 @@ describe('Orchestrator', () => {
     }
   }
 
-  const newTask = (o: Orchestrator): Task =>
-    o.createTask({ projectId, title: 'Add sum function', description: 'sum(a, b)', type: 'feature', priority: 2, status: 'queue' })
+  const newTask = (o: Orchestrator, extra: Partial<NewTaskInput> = {}): Promise<Task> =>
+    o.createTask({ projectId, title: 'Add sum function', description: 'sum(a, b)', type: 'feature', priority: 2, status: 'queue', discuss: false, ...extra })
 
   it('runs the full cycle: plan → approval → fix loop → review → accept with version bump', async () => {
     const calls: { agent: Agent; opts: RunOptions }[] = []
     const o = make({ testsPassOn: 2 }, calls)
-    const t = newTask(o)
+    const t = await newTask(o)
     await settle(o)
 
     let task = db.getTask(t.id)!
@@ -162,7 +170,7 @@ describe('Orchestrator', () => {
   it('fails after the iteration limit', async () => {
     db.setSettings({ maxIterations: 2 })
     const o = make({ testsPassOn: 99 })
-    const t = newTask(o)
+    const t = await newTask(o)
     await settle(o)
     o.approvePlan(t.id)
     await settle(o)
@@ -174,7 +182,7 @@ describe('Orchestrator', () => {
 
   it('refuses to start on a dirty working tree', async () => {
     const o = make({})
-    const t = newTask(o)
+    const t = await newTask(o)
     await settle(o)
     writeFileSync(join(repo, 'index.js'), 'changed\n')
     o.approvePlan(t.id)
@@ -187,7 +195,7 @@ describe('Orchestrator', () => {
 
   it('pauses the queue on the usage limit and keeps the task queued', async () => {
     const o = make({ limitOn: 'planner' })
-    const t = newTask(o)
+    const t = await newTask(o)
     await o.tick()
     await o.idle()
     const task = db.getTask(t.id)!
@@ -199,7 +207,7 @@ describe('Orchestrator', () => {
 
   it('reject deletes the branch and returns the task to backlog', async () => {
     const o = make({})
-    const t = newTask(o)
+    const t = await newTask(o)
     await settle(o)
     o.approvePlan(t.id)
     await settle(o)
@@ -212,13 +220,13 @@ describe('Orchestrator', () => {
 
   it('waits for review before implementing the next task in the same project', async () => {
     const o = make({})
-    const a = newTask(o)
+    const a = await newTask(o)
     await settle(o)
     o.approvePlan(a.id)
     await settle(o)
     expect(db.getTask(a.id)!.status).toBe('review')
 
-    const b = newTask(o)
+    const b = await newTask(o)
     await settle(o)
     o.approvePlan(b.id)
     await o.tick()
@@ -229,5 +237,74 @@ describe('Orchestrator', () => {
     await settle(o)
     expect(db.getTask(b.id)!.status).toBe('review')
     expect(db.getTask(b.id)!.currentVersion).toBe('1.1.0')
+  })
+
+  it('asks questions when discussing, then plans with the answers in the resumed session', async () => {
+    const calls: { agent: Agent; opts: RunOptions }[] = []
+    const o = make({ questionsFirst: true }, calls)
+    const t = await newTask(o, { discuss: true })
+    await settle(o)
+
+    let task = db.getTask(t.id)!
+    expect(task.status).toBe('approval')
+    expect(task.questions?.[0].question).toBe('Which style?')
+    expect(task.plan).toBeUndefined()
+    expect(calls[0].opts.prompt).toContain('asked to discuss')
+    expect(() => o.approvePlan(t.id)).toThrow(/questions/)
+
+    // re-create the situation to test answering
+    const t2 = await newTask(o, { discuss: true, title: 'Second' })
+    await settle(o)
+    o.answerQuestions(t2.id, { q1: 'Arrow' })
+    task = db.getTask(t2.id)!
+    expect(task.questions).toBeUndefined()
+    expect(task.discussion).toEqual([{ question: 'Which style?', answer: 'Arrow' }])
+    await settle(o)
+    task = db.getTask(t2.id)!
+    expect(task.status).toBe('approval')
+    expect(task.plan).toContain('add sum()')
+    const last = calls.filter((c) => c.agent === 'planner').at(-1)!.opts
+    expect(last.prompt).toContain('A: Arrow')
+    expect(last.resume).toBe('sess-planner')
+  })
+
+  it('only asks when needed and stops asking after the round limit', async () => {
+    const calls: { agent: Agent; opts: RunOptions }[] = []
+    const o = make({}, calls)
+    const t = await newTask(o)
+    await settle(o)
+    expect(db.getTask(t.id)!.questions).toBeUndefined()
+    expect(calls[0].opts.prompt).toContain('Otherwise')
+    expect(calls[0].opts.prompt).not.toContain('asked to discuss')
+
+    const task = db.getTask(t.id)!
+    task.questionRounds = 3
+    db.saveTask(task)
+    o.replan(t.id, 'again')
+    await settle(o)
+    expect(calls.at(-1)!.opts.prompt).toContain('Questions are no longer allowed')
+  })
+
+  it('uses a custom branch name and validates it', async () => {
+    const o = make({})
+    await expect(newTask(o, { branch: 'bad..name' })).rejects.toThrow(/not a valid/)
+    await expect(newTask(o, { branch: 'main' })).rejects.toThrow(/already exists/)
+    const t = await newTask(o, { branch: 'feature/sum' })
+    await settle(o)
+    o.approvePlan(t.id)
+    await settle(o)
+    expect(db.getTask(t.id)!.branch).toBe('feature/sum')
+    expect(git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('feature/sum')
+    // Rejecting keeps the chosen name for the next attempt.
+    expect((await o.reject(t.id)).branch).toBe('feature/sum')
+  })
+
+  it('creates a branch without switching to it', async () => {
+    const g = new GitService(repo)
+    expect(await g.isValidBranchName('feat/ok')).toBe(true)
+    expect(await g.isValidBranchName('no spaces')).toBe(false)
+    await g.createBranch('feat/ok', 'main', false)
+    expect(git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('main')
+    expect(await g.branchExists('feat/ok')).toBe(true)
   })
 })

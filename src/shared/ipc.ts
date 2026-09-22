@@ -29,7 +29,12 @@ export interface IpcContract {
 
   'tasks:list': (projectId: number) => Task[]
   'tasks:create': (input: NewTaskInput) => Task
-  'tasks:update': (id: number, patch: Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan'>>) => Task
+  'tasks:update': (
+    id: number,
+    patch: Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>>
+  ) => Task
+  /** Answers keyed by question id. */
+  'tasks:answer': (id: number, answers: Record<string, string>) => Task
   'tasks:move': (id: number, status: TaskStatus) => Task
   'tasks:remove': (id: number) => void
   'tasks:events': (taskId: number) => LogEvent[]
@@ -55,6 +60,8 @@ export interface IpcContract {
   'git:branches': (projectId: number) => GitBranch[]
   'git:log': (projectId: number) => GitCommit[]
   'git:checkout': (projectId: number, branch: string) => void
+  'git:createBranch': (projectId: number, name: string, from: string, checkout: boolean) => void
+  'git:deleteBranch': (projectId: number, name: string, force: boolean) => void
   'git:pull': (projectId: number) => string
   'git:push': (projectId: number) => string
   'git:fetch': (projectId: number) => void

@@ -16,6 +16,8 @@ Veltrix runs the `claude` CLI you already have installed and signed in to (Pro/M
   - **Tester** writes tests and runs the whole suite.
   - **Code Reviewer** and **Security Auditor** (both read-only) check the diff.
   - **Release Manager** proposes MAJOR/MINOR/PATCH and a CHANGELOG entry.
+- **Discuss before planning.** When a choice is genuinely ambiguous, the planner asks questions with options to pick, like Claude Code does. Tick “Discuss before planning” on a task to always talk it through first.
+- **Your own branch names.** Set a branch name per task, or leave it empty for an automatic `veltrix/<id>-<slug>`.
 - **Automatic fix loop.** Failed tests, requested changes or high/critical security findings send the task back to the developer, resuming the same Claude session. The number of loops is configurable.
 - **Review screen:**
   - live agent log;
@@ -25,7 +27,8 @@ Veltrix runs the `claude` CLI you already have installed and signed in to (Pro/M
   - version bump selector.
   
   **Accept** merges with `--no-ff`, bumps the version in `package.json` / `pyproject.toml` / `Cargo.toml` / `*.csproj` / `VERSION`, updates `CHANGELOG.md` and creates the `vX.Y.Z` tag.
-- **Git without commands.** Status, commit (with an AI-generated message), branches, history, pull/push/fetch/stash.
+- **Git without commands.** Status, commit (with an AI-generated message), create/switch/delete branches, history, pull/push/fetch/stash.
+- **Guided tour.** A step-by-step walkthrough on first launch; restart it any time from Settings.
 - **Any project.** Open a folder or clone a repository. The project's `CLAUDE.md`, `.claude/settings.json`, hooks, MCP servers and `.claude/agents` are all picked up by Claude Code as usual. You can also generate `CLAUDE.md` with `/init` from the UI.
 - **Customizable agents.** Edit the prompt, model, effort, permission mode and allowed tools. Changes are saved for all projects or as a per-project override in `.veltrix/agents/*.md`.
 - **Subscription-aware.** Shows 5-hour and 7-day usage. When the limit is hit, the queue pauses and resumes automatically after the reset.
@@ -78,7 +81,9 @@ claude -p --output-format stream-json --verbose --permission-mode <plan|acceptEd
 ```bash
 npm run typecheck
 npm test                                                   # unit tests, including the full pipeline with a fake Claude
-VELTRIX_USER_DATA=/tmp/vx node e2e/smoke.mjs <project> <shots-dir>   # screenshots of every screen
+VELTRIX_USER_DATA=/tmp/vx node e2e/smoke.mjs <project> <shots-dir>      # screenshots of every screen
+VELTRIX_USER_DATA=/tmp/vx2 node e2e/features.mjs <project> <shots-dir>  # tour, branches, scrolling checks
+VELTRIX_USER_DATA=/tmp/vx3 DISCUSS=1 node e2e/full-cycle.mjs <sandbox> <shots-dir>  # real Claude run
 ```
 
 Contributions are welcome — see `CLAUDE.md` for the architecture and conventions.
@@ -97,6 +102,9 @@ Veltrix использует уже установленный и авториз
 
 **Возможности:**
 - **Доска задач** с drag-and-drop.
+- **Обсуждение перед планом:** планировщик задаёт вопросы с вариантами, когда без них не обойтись, а с галочкой «Обсудить перед планом» — всегда.
+- **Своё имя ветки** для задачи или автоматическое.
+- **Экскурсия по интерфейсу** при первом запуске.
 - **Строго последовательная очередь:** каждая задача выполняется в своей ветке.
 - **Шесть агентов:** планировщик, разработчик, тестировщик, ревьюер, аудитор безопасности и релиз-менеджер.
 - **Автоматический цикл исправлений.** Если проверки не прошли, задача возвращается разработчику.

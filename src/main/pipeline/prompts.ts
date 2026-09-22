@@ -19,13 +19,43 @@ const LANGUAGE_RULE =
   'Language: write every human-readable text you produce (plan, summaries, findings, changelog lines) in the same language as the task title and description above.\n' +
   'Versioning: do not change the project version or CHANGELOG.md and do not treat an unchanged version as a problem — Veltrix bumps the version, writes the changelog and tags the release when the user accepts the task.'
 
+/** How many rounds of questions the planner may ask before it must write the plan. */
+export const MAX_QUESTION_ROUNDS = 3
+
 export function planPrompt(t: Task): string {
   const parts = [taskHeader(t)]
+  if (t.discussion.length) {
+    parts.push(
+      '## Answers from the user',
+      t.discussion.map((d) => `- Q: ${d.question}\n  A: ${d.answer}`).join('\n')
+    )
+  }
   if (t.plan && t.replanComment) {
     parts.push('## Previous plan', t.plan, '## Feedback from the user — revise the plan accordingly', t.replanComment)
   }
-  parts.push('Write the implementation plan now. Do not modify any files.')
+  parts.push(questionRule(t), 'Do not modify any files.')
   return parts.join('\n\n')
+}
+
+function questionRule(t: Task): string {
+  const rounds = t.questionRounds ?? 0
+  if (rounds >= MAX_QUESTION_ROUNDS)
+    return 'Questions are no longer allowed: return kind "plan" with the implementation plan now.'
+  const how =
+    'Each question has a short id, the question text, 2–4 concrete options (label + one-line description of the trade-off), ' +
+    'multiSelect when several options can be combined, and allowCustom: true. Ask at most 4 questions at a time.'
+  if (t.discuss && t.discussion.length === 0)
+    return (
+      'The user asked to discuss this task before planning. Return kind "questions": ask 1–4 clarifying questions ' +
+      'and/or offer alternative implementation approaches to choose from. ' +
+      how
+    )
+  return (
+    'If a decision is genuinely ambiguous and would change the implementation (and you cannot infer it from the task, ' +
+    'the code or CLAUDE.md), return kind "questions". Otherwise — which is the normal case — return kind "plan" with the ' +
+    'implementation plan. ' +
+    how
+  )
 }
 
 export function developPrompt(t: Task, base: string): string {

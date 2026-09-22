@@ -82,7 +82,7 @@ export function Board(): ReactNode {
         onDragCancel={() => setDragging(null)}
         onDragEnd={onDragEnd}
       >
-        <div className="board">
+        <div className="board" data-tour="board">
           {TASK_COLUMNS.map((c) => (
             <Column key={c} status={c} tasks={byCol[c]} dragging={dragging}>
               {c === 'backlog' && (
@@ -114,7 +114,7 @@ function Column({
   const canDrop = !!dragging && dragging.status !== status && !!DROP_RULES[status]?.includes(dragging.status)
   const { setNodeRef, isOver } = useDroppable({ id: status, disabled: !canDrop })
   return (
-    <div ref={setNodeRef} className={`col ${canDrop && isOver ? 'drop' : ''}`}>
+    <div ref={setNodeRef} className={`col ${canDrop && isOver ? 'drop' : ''}`} data-tour={`col-${status}`}>
       <div className="col-h">
         <span className="sw" style={{ background: COL_COLORS[status] }} />
         {t(`c_${status}`)}
@@ -191,7 +191,11 @@ function CardBody({ task, overlay }: { task: Task; overlay?: boolean }): ReactNo
     case 'approval':
       extra = (
         <>
-          <div className="card-note note-warn">{t('plan_wait').split('.')[0]}.</div>
+          {task.questions?.length ? (
+            <div className="card-note note-info">{t('questions_note')}</div>
+          ) : (
+            <div className="card-note note-warn">{t('plan_wait').split('.')[0]}.</div>
+          )}
           <div className="act">
             <button
               className="btn sm primary"
@@ -201,7 +205,7 @@ function CardBody({ task, overlay }: { task: Task; overlay?: boolean }): ReactNo
                 selectTask(task.id, 'plan')
               }}
             >
-              {t('approve')}
+              {task.questions?.length ? t('answer') : t('approve')}
             </button>
           </div>
         </>
@@ -249,6 +253,7 @@ function CardBody({ task, overlay }: { task: Task; overlay?: boolean }): ReactNo
       <div className="top">
         <span className="id">#{task.seq}</span>
         <TypeTag type={task.type} />
+        {task.discuss && <span className="tag t-discuss">{t('discuss_tag')}</span>}
         <span className="grow" />
         <Prio p={task.priority} />
       </div>

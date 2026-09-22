@@ -20,7 +20,8 @@ import type { ClaudeCommand } from '../claude/locate'
 import type { StreamEvent } from '../claude/parse'
 import type { Runner } from '../claude/runner'
 import type { Db } from '../db'
-import { GitService, slugify } from '../git'
+import { autoBranchName } from '@shared/slug'
+import { GitService } from '../git'
 import { applyVersion, detectVersion, nextVersion, writeChangelog } from '../version'
 import * as P from './prompts'
 import {
@@ -32,6 +33,8 @@ import {
   toJsonSchema,
   type ZodSchema
 } from './schemas'
+
+export type TaskPatch = Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>>
 
 export interface OrchestratorDeps {
   db: Db
@@ -202,14 +205,25 @@ export class Orchestrator {
     task.startedAt ??= Date.now()
     task.error = task.errorKind = undefined
     this.setStage(task, 'plan', 'active')
-    const { data } = await this.runAgent(task, project, 'planner', P.planPrompt(task), planSchema, false)
-    task.plan = data.plan
-    task.replanComment = undefined
+    // The planner keeps its session across question rounds and re-plans.
+    const { data } = await this.runAgent(task, project, 'planner', P.planPrompt(task), planSchema, true)
+    const asks = data.kind === 'questions' && (task.questionRounds ?? 0) < P.MAX_QUESTION_ROUNDS
     task.stages.plan = 'waiting'
     task.activeStage = undefined
     task.status = 'approval'
+    if (asks) {
+      task.questions = data.questions!.map((q, i) => ({ ...q, id: q.id || `q${i + 1}` }))
+      task.questionRounds = (task.questionRounds ?? 0) + 1
+      this.save(task)
+      this.log(task, { kind: 'sys', text: `The planner has ${task.questions.length} question(s). Waiting for your answers.` })
+      return
+    }
+    if (!data.plan?.trim()) throw new TaskError('claude', 'The planner returned no plan.')
+    task.plan = data.plan
+    task.questions = undefined
+    task.replanComment = undefined
     this.save(task)
-    this.log(task, { kind: 'sys', text: `Plan ready (expected bump: ${data.expectedBump}). Waiting for approval.` })
+    this.log(task, { kind: 'sys', text: `Plan ready (expected bump: ${data.expectedBump ?? '?'}). Waiting for approval.` })
   }
 
   private async implement(task: Task, project: Project): Promise<void> {
@@ -218,7 +232,7 @@ export class Orchestrator {
       throw new TaskError('no_git', 'The project needs a git repository with at least one commit.')
 
     const current = await git.currentBranch()
-    task.branch ??= `veltrix/${task.seq}-${slugify(task.title)}`
+    task.branch ??= autoBranchName(task.seq, task.title)
     if (!(await git.isClean())) {
       if (current === task.branch) await git.commitAll(`wip: ${task.title} (#${task.seq})`)
       else
@@ -419,9 +433,15 @@ export class Orchestrator {
 
   // ---------------------------------------------------------------- user actions
 
-  createTask(input: NewTaskInput): Task {
+  async createTask(input: NewTaskInput): Promise<Task> {
     const now = Date.now()
+    const branch = input.branch?.trim() || undefined
+    if (branch) await this.validateBranch(input.projectId, branch)
     const t = this.d.db.insertTask({
+      discuss: !!input.discuss,
+      discussion: [],
+      branch,
+      branchCustom: !!branch,
       projectId: input.projectId,
       seq: this.d.db.nextSeq(input.projectId),
       title: input.title.trim(),
@@ -445,10 +465,47 @@ export class Orchestrator {
     return t
   }
 
-  updateTask(id: number, patch: Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan'>>): Task {
+  async updateTask(id: number, patch: TaskPatch): Promise<Task> {
     const t = this.mustTask(id)
-    Object.assign(t, patch)
+    const { branch, ...rest } = patch
+    if (branch !== undefined) {
+      const name = branch.trim()
+      if (name !== (t.branchCustom ? t.branch : '')) {
+        if (t.baseBranch) throw new Error('The branch already exists; its name can no longer be changed.')
+        if (name) await this.validateBranch(t.projectId, name, t.id)
+        t.branch = name || undefined
+        t.branchCustom = !!name
+      }
+    }
+    Object.assign(t, rest)
     this.save(t)
+    return t
+  }
+
+  /** Checks a user-supplied branch name: valid for git, not taken by another branch or task. */
+  private async validateBranch(projectId: number, name: string, taskId?: number): Promise<void> {
+    const project = this.mustProject(projectId)
+    const git = this.git(project.path)
+    if (!(await git.isValidBranchName(name))) throw new Error(`"${name}" is not a valid git branch name.`)
+    if ((await git.isRepo()) && (await git.branchExists(name))) throw new Error(`Branch "${name}" already exists.`)
+    const taken = this.d.db.listTasks(projectId).find((x) => x.id !== taskId && x.branch === name && x.status !== 'done')
+    if (taken) throw new Error(`Branch "${name}" is already used by task #${taken.seq}.`)
+  }
+
+  answerQuestions(id: number, answers: Record<string, string>): Task {
+    const t = this.mustTask(id)
+    if (t.status !== 'approval' || !t.questions?.length) throw new Error('The task has no open questions')
+    for (const q of t.questions) {
+      const a = answers[q.id]?.trim()
+      t.discussion.push({ question: q.question, answer: a || '(no preference — decide yourself)' })
+    }
+    t.questions = undefined
+    t.stages.plan = ''
+    t.status = 'queue'
+    t.order = 0
+    this.save(t)
+    this.log(t, { kind: 'sys', text: 'Answers sent to the planner' })
+    this.kick()
     return t
   }
 
@@ -464,6 +521,7 @@ export class Orchestrator {
     if (status === 'backlog' && t.status === 'approval') {
       t.planApproved = false
       t.stages.plan = ''
+      t.questions = undefined
     }
     t.status = status
     t.order = Date.now()
@@ -483,6 +541,7 @@ export class Orchestrator {
   approvePlan(id: number, plan?: string): Task {
     const t = this.mustTask(id)
     if (t.status !== 'approval') throw new Error('The plan is not waiting for approval')
+    if (t.questions?.length || !(plan ?? t.plan)?.trim()) throw new Error("Answer the planner's questions first: there is no plan yet")
     if (plan !== undefined) t.plan = plan
     t.planApproved = true
     t.stages.plan = 'done'
@@ -561,8 +620,11 @@ export class Orchestrator {
       status: 'backlog',
       stages: emptyStages(),
       planApproved: false,
-      branch: undefined,
+      // A name the user chose is kept for the next attempt.
+      branch: t.branchCustom ? t.branch : undefined,
       baseBranch: undefined,
+      questions: undefined,
+      questionRounds: 0,
       sessions: {},
       reports: {},
       iteration: 0,

@@ -109,6 +109,7 @@ export function registerIpc(ctx: Ctx): void {
   handle('tasks:move', (id, status) => orch.move(id, status))
   handle('tasks:remove', (id) => orch.remove(id))
   handle('tasks:events', (taskId) => db.listEvents(taskId))
+  handle('tasks:answer', (id, answers) => orch.answerQuestions(id, answers))
   handle('tasks:approvePlan', (id, plan) => orch.approvePlan(id, plan))
   handle('tasks:replan', (id, comment) => orch.replan(id, comment))
   handle('tasks:accept', (id, bump) => orch.accept(id, bump))
@@ -169,6 +170,20 @@ export function registerIpc(ctx: Ctx): void {
   handle('git:branches', (pid) => git(pid).branches())
   handle('git:log', (pid) => git(pid).log(60))
   handle('git:checkout', (pid, branch) => git(pid).checkout(branch))
+  handle('git:createBranch', async (pid, name, from, checkout) => {
+    const g = git(pid)
+    const branch = name.trim()
+    if (!(await g.isValidBranchName(branch))) throw new Error(`"${branch}" is not a valid git branch name.`)
+    if (await g.branchExists(branch)) throw new Error(`Branch "${branch}" already exists.`)
+    await g.createBranch(branch, from, checkout)
+  })
+  handle('git:deleteBranch', async (pid, name, force) => {
+    const active = db
+      .listTasks(pid)
+      .find((t) => t.branch === name && t.status !== 'done' && t.status !== 'backlog')
+    if (active) throw new Error(`Branch "${name}" belongs to task #${active.seq}. Reject the task instead.`)
+    await git(pid).deleteBranch(name, force)
+  })
   handle('git:pull', (pid) => git(pid).pull())
   handle('git:push', (pid) => git(pid).push())
   handle('git:fetch', (pid) => git(pid).fetch())
