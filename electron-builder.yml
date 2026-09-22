@@ -1,0 +1,29 @@
+appId: dev.veltrix.app
+productName: Veltrix
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: resources/agents
+    to: agents
+asarUnpack:
+  - resources/**
+icon: build/icon.png
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+mac:
+  target: dmg
+linux:
+  target: AppImage
+  category: Development
+publish: null

@@ -1,0 +1,766 @@
+<title>Veltrix Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap">
+<style>
+:root{
+  --bg:#eceef2; --panel:#ffffff; --panel2:#f4f5f8; --sunk:#e4e7ed; --line:#d9dde5; --line2:#c9ced8;
+  --text:#191d25; --muted:#5b6372; --faint:#8a92a1;
+  --accent:#d9822b; --accent-ink:#9d5610; --accent-soft:#fbead6; --on-accent:#1a1206;
+  --ok:#2f8f5b; --ok-soft:#dcf1e4; --warn:#b98309; --warn-soft:#f8ecc8; --bad:#cc4740; --bad-soft:#f8dcda;
+  --info:#3a78c7; --info-soft:#dbe8f8; --violet:#7b5bc9; --violet-soft:#e8e0f8; --teal:#1f8e8a; --teal-soft:#d5efee;
+  --shadow:0 12px 40px rgba(20,26,40,.18);
+  --sans:"IBM Plex Sans",system-ui,"Segoe UI",sans-serif; --mono:"JetBrains Mono",Consolas,monospace; --brand:"Syne","IBM Plex Sans",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1116; --panel:#151920; --panel2:#1b2029; --sunk:#10141a; --line:#262c37; --line2:#333b48;
+    --text:#e5e8ee; --muted:#9199a8; --faint:#667082;
+    --accent:#f0a24c; --accent-ink:#f5b56c; --accent-soft:#3a2a17; --on-accent:#1a1206;
+    --ok:#4cc083; --ok-soft:#173226; --warn:#e3b341; --warn-soft:#352c14; --bad:#ef6b62; --bad-soft:#3a1c1b;
+    --info:#6aa5ec; --info-soft:#18283d; --violet:#a78bf0; --violet-soft:#2a2240; --teal:#4cc4bf; --teal-soft:#15302f;
+    --shadow:0 16px 48px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1116; --panel:#151920; --panel2:#1b2029; --sunk:#10141a; --line:#262c37; --line2:#333b48;
+  --text:#e5e8ee; --muted:#9199a8; --faint:#667082;
+  --accent:#f0a24c; --accent-ink:#f5b56c; --accent-soft:#3a2a17; --on-accent:#1a1206;
+  --ok:#4cc083; --ok-soft:#173226; --warn:#e3b341; --warn-soft:#352c14; --bad:#ef6b62; --bad-soft:#3a1c1b;
+  --info:#6aa5ec; --info-soft:#18283d; --violet:#a78bf0; --violet-soft:#2a2240; --teal:#4cc4bf; --teal-soft:#15302f;
+  --shadow:0 16px 48px rgba(0,0,0,.5);
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.45;overflow:hidden}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg{width:16px;height:16px;flex:none}
+.tool summary svg{width:12px;height:12px}
+.ver svg{width:18px;height:18px;color:var(--faint)}
+.mono{font-family:var(--mono)}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* shell */
+.app{display:grid;grid-template-columns:60px 1fr;height:100%}
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding-block:12px;gap:4px}
+.logo{font-family:var(--brand);font-weight:800;font-size:20px;width:36px;height:36px;display:grid;place-items:center;border-radius:9px;background:var(--text);color:var(--bg);margin-bottom:14px;letter-spacing:-.5px}
+.rail-btn{width:42px;height:42px;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--muted);position:relative}
+.rail-btn:hover{background:var(--panel2);color:var(--text)}
+.rail-btn.on{background:var(--accent-soft);color:var(--accent-ink)}
+.rail-btn svg{width:20px;height:20px}
+.rail-btn .tip{position:absolute;left:52px;white-space:nowrap;background:var(--text);color:var(--bg);font-size:12px;padding:3px 8px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:20}
+.rail-btn:hover .tip{opacity:1}
+.rail .spacer{flex:1}
+.main{display:grid;grid-template-rows:auto 1fr auto;min-width:0;height:100%}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.proj{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;border:0;background:none;padding:4px 8px;border-radius:8px}
+.proj:hover{background:var(--panel2)}
+.proj small{color:var(--faint);font-weight:400;font-family:var(--mono);font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);background:var(--panel2);white-space:nowrap}
+.chip svg{width:13px;height:13px}
+.grow{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn svg{width:15px;height:15px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted)}
+.btn.ghost:hover{color:var(--text);background:var(--panel2)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:5px 10px;font-size:12px;font-weight:500;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:var(--text);color:var(--bg)}
+.queue{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.dot.live{background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.statusbar{display:flex;gap:16px;align-items:center;padding:5px 18px;border-top:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--muted);flex-wrap:wrap}
+.statusbar span{display:inline-flex;gap:6px;align-items:center}
+.meter{width:90px;height:5px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent)}
+#view{overflow:auto;min-height:0}
+.page{padding:22px 24px;max-width:1200px}
+.page h1{font-size:20px;margin:0 0 4px;text-wrap:balance}
+.page .sub{color:var(--muted);margin:0 0 20px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);font-weight:600}
+
+/* board */
+.board-head{display:flex;align-items:center;gap:10px;padding:14px 18px 6px;flex-wrap:wrap}
+.board-head h2{font-size:16px;margin:0}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.board{display:flex;gap:12px;padding:10px 18px 18px;overflow-x:auto;align-items:flex-start;min-height:calc(100% - 60px)}
+.col{flex:0 0 272px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;max-height:100%}
+.col.drop{outline:2px dashed var(--accent);outline-offset:-2px}
+.col-h{display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:600;font-size:13px}
+.col-h .n{color:var(--faint);font-weight:500;font-family:var(--mono);font-size:12px}
+.col-h .sw{width:8px;height:8px;border-radius:2px}
+.col-b{display:flex;flex-direction:column;gap:8px;padding:0 8px 10px;min-height:40px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 11px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .12s,transform .12s}
+.card:hover{border-color:var(--line2);transform:translateY(-1px)}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card .top{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint)}
+.card .id{font-family:var(--mono)}
+.card .ttl{font-weight:500;font-size:13.5px;line-height:1.35}
+.card .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.tag{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px;letter-spacing:.02em}
+.t-feature{background:var(--info-soft);color:var(--info)}
+.t-fix{background:var(--bad-soft);color:var(--bad)}
+.t-refactor{background:var(--violet-soft);color:var(--violet)}
+.t-breaking{background:var(--warn-soft);color:var(--warn)}
+.prio{display:inline-flex;gap:1px;align-items:flex-end;height:10px}
+.prio i{width:3px;background:var(--line2);border-radius:1px}
+.prio i:nth-child(1){height:4px}.prio i:nth-child(2){height:7px}.prio i:nth-child(3){height:10px}
+.prio.p1 i:nth-child(1),.prio.p2 i:nth-child(-n+2),.prio.p3 i{background:var(--accent)}
+.mini{display:flex;gap:3px}
+.mini i{flex:1;height:4px;border-radius:2px;background:var(--sunk)}
+.mini i.d{background:var(--ok)} .mini i.a{background:var(--accent);animation:blink 1.2s infinite} .mini i.f{background:var(--bad)}
+@keyframes blink{50%{opacity:.4}}
+.card .act{display:flex;gap:6px}
+.card-note{font-size:11.5px;padding:6px 8px;border-radius:7px}
+.note-warn{background:var(--accent-soft);color:var(--accent-ink)}
+.note-bad{background:var(--bad-soft);color:var(--bad)}
+.note-ok{background:var(--ok-soft);color:var(--ok)}
+.add-inline{border:1px dashed var(--line2);background:none;border-radius:9px;padding:7px;color:var(--faint);font-size:12.5px}
+.add-inline:hover{color:var(--text);border-color:var(--muted)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,12,18,.35);z-index:30}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--shadow);z-index:31;display:flex;flex-direction:column;animation:slide .18s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:.5}}
+.dr-h{padding:16px 20px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.dr-h .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dr-h h2{margin:0;font-size:18px;text-wrap:balance}
+.stepper{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.step{flex:1 0 92px;display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--muted)}
+.step .bar{height:4px;border-radius:2px;background:var(--sunk)}
+.step.d .bar{background:var(--ok)} .step.a .bar{background:var(--accent);animation:blink 1.2s infinite} .step.f .bar{background:var(--bad)} .step.w .bar{background:var(--info)}
+.step b{font-weight:600;color:var(--text);font-size:12px;display:flex;gap:5px;align-items:center}
+.step .ag{width:7px;height:7px;border-radius:50%}
+.tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 10px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--text);border-color:var(--accent);font-weight:500}
+.tabs .cnt{font-size:10.5px;background:var(--sunk);border-radius:8px;padding:0 6px;margin-left:4px;color:var(--muted)}
+.dr-b{flex:1;overflow:auto;padding:16px 20px}
+.dr-f{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel2)}
+
+/* log */
+.log{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.ev{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:start}
+.ev .ts{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:3px}
+.ev .who{font-size:11px;font-weight:600;display:inline-flex;gap:5px;align-items:center;margin-bottom:2px}
+.ev .txt{color:var(--text)}
+.tool{border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-family:var(--mono);font-size:12px;overflow:hidden}
+.tool summary{padding:6px 10px;display:flex;gap:8px;align-items:center;cursor:pointer;list-style:none}
+.tool summary::-webkit-details-marker{display:none}
+.tool .tn{color:var(--accent-ink);font-weight:500}
+.tool .res{margin-left:auto;font-size:11px}
+.tool pre{margin:0;padding:8px 10px;border-top:1px solid var(--line);background:var(--sunk);white-space:pre-wrap;color:var(--muted);max-height:180px;overflow:auto}
+.sysline{font-size:12px;color:var(--faint);border-left:2px solid var(--line2);padding-left:10px}
+.caret{display:inline-block;width:7px;height:14px;background:var(--accent);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+
+/* plan / md */
+.md{max-width:68ch;font-size:14px}
+.md h3{font-size:15px;margin:18px 0 6px}
+.md h3:first-child{margin-top:0}
+.md ul,.md ol{padding-left:20px;margin:6px 0}
+.md li{margin:3px 0}
+.md code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:1px 5px;border-radius:4px}
+.callout{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;margin-bottom:16px}
+.callout svg{width:18px;height:18px;flex:none;color:var(--accent);margin-top:1px}
+textarea.inp,input.inp,select.inp{width:100%;background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+textarea.inp{min-height:80px;resize:vertical}
+
+/* diff */
+.files{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+.fl{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:6px;border:0;background:none;text-align:left}
+.fl.on{background:var(--panel2)}
+.fl .st{width:16px;font-weight:600}
+.fl .add{color:var(--ok)} .fl .del{color:var(--bad)}
+.diff{border:1px solid var(--line);border-radius:10px;overflow:auto;font-family:var(--mono);font-size:12px}
+.diff table{border-collapse:collapse;width:100%;min-width:560px}
+.diff td{padding:0 8px;white-space:pre;vertical-align:top;line-height:1.7}
+.diff td.ln{color:var(--faint);text-align:right;width:1%;user-select:none;border-right:1px solid var(--line)}
+.diff tr.a td{background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.diff tr.r td{background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.diff tr.h td{background:var(--info-soft);color:var(--info)}
+.diff .fh{padding:7px 10px;background:var(--panel2);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+
+/* reports */
+.reps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:18px}
+.rep{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.rep .big{font-size:22px;font-weight:600}
+.rep .v{font-size:12px;font-weight:600;display:inline-flex;gap:5px;align-items:center}
+.issues{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.issue{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:10px 12px;align-items:start;font-size:13px}
+.issue+.issue{border-top:1px solid var(--line)}
+.sev{font-size:10.5px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:4px;letter-spacing:.04em}
+.sev.low{background:var(--info-soft);color:var(--info)} .sev.med{background:var(--warn-soft);color:var(--warn)} .sev.high{background:var(--bad-soft);color:var(--bad)}
+.issue .loc{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+
+/* release */
+.bump{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}
+.bump button{border:1px solid var(--line2);background:var(--panel);border-radius:10px;padding:10px;text-align:left;display:flex;flex-direction:column;gap:2px}
+.bump button.on{border-color:var(--accent);background:var(--accent-soft)}
+.bump b{font-family:var(--mono);font-size:15px}
+.bump span{font-size:11.5px;color:var(--muted)}
+.ver{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:22px;font-weight:500}
+.ver .old{color:var(--faint);text-decoration:line-through}
+.ver .new{color:var(--accent-ink)}
+.chlog{border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:12.5px;background:var(--panel2);white-space:pre-wrap}
+
+/* generic panels */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.panel h3{margin:0 0 12px;font-size:14px;display:flex;align-items:center;gap:8px}
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:10px;align-items:center;padding:9px 4px;border-top:1px solid var(--line);font-size:13px}
+.li:first-child{border-top:0}
+.li .sub2{color:var(--faint);font-size:12px;font-family:var(--mono)}
+.recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.pcard{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;text-align:left}
+.pcard:hover{border-color:var(--accent)}
+.pcard b{font-size:15px}
+.pcard .path{font-family:var(--mono);font-size:11.5px;color:var(--faint);word-break:break-all}
+.check{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:13px}
+.check .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--ok-soft);color:var(--ok);flex:none}
+.check .ic svg{width:12px;height:12px}
+.hero-home{display:flex;gap:18px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+.hero-home .wm{font-family:var(--brand);font-weight:800;font-size:34px;letter-spacing:-1px}
+.hero-home p{margin:0;color:var(--muted);max-width:60ch}
+.gitlog{font-family:var(--mono);font-size:12px}
+.gitlog .li{gap:12px}
+.graph{width:14px;display:flex;justify-content:center;position:relative;align-self:stretch}
+.graph:before{content:"";position:absolute;top:0;bottom:0;width:2px;background:var(--line2)}
+.graph i{width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);position:relative;margin-top:3px}
+.graph.m i{border-color:var(--violet)}
+.reftag{font-size:10.5px;padding:0 6px;border-radius:4px;background:var(--teal-soft);color:var(--teal);font-weight:600}
+.refbr{font-size:10.5px;padding:0 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.agents{display:grid;grid-template-columns:240px 1fr;gap:16px}
+.agl{display:flex;flex-direction:column;gap:4px}
+.agl button{display:flex;gap:10px;align-items:center;border:1px solid transparent;background:none;border-radius:10px;padding:9px 10px;text-align:left}
+.agl button.on{background:var(--panel);border-color:var(--line)}
+.agl .av{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+.agl small{display:block;color:var(--faint);font-size:11.5px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;font-weight:500;color:var(--muted)}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.tools label{display:inline-flex;gap:5px;align-items:center;border:1px solid var(--line2);padding:3px 9px;border-radius:999px;font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.prompt{font-family:var(--mono);font-size:12.5px;min-height:260px;line-height:1.55}
+.flow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:16px}
+.flow .node{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:4px 10px;display:inline-flex;gap:6px;align-items:center;color:var(--text)}
+.flow .arr{color:var(--faint)}
+.set-row{display:grid;grid-template-columns:1fr minmax(200px,280px);gap:16px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.set-row:first-of-type{border-top:0}
+.set-row p{margin:2px 0 0;color:var(--faint);font-size:12px}
+
+/* modal / toast */
+.modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(10,12,18,.45);padding:16px}
+.dialog{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:min(560px,100%);max-height:100%;overflow:auto}
+.dialog header{padding:16px 18px;border-bottom:1px solid var(--line);font-weight:600;font-size:16px}
+.dialog .body{padding:16px 18px}
+.dialog footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:13px;z-index:50;box-shadow:var(--shadow);display:flex;gap:8px;align-items:center;max-width:calc(100% - 32px)}
+.toast svg{width:15px;height:15px;color:var(--ok)}
+
+@media (max-width:720px){
+  .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .rail{grid-row:2;flex-direction:row;justify-content:space-around;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line)}
+  .rail .logo,.rail .spacer,.rail-btn .tip{display:none}
+  .topbar{padding:8px 16px}
+  .statusbar{display:none}
+  .page{padding:16px}
+  .agents{grid-template-columns:1fr}
+  .set-row{grid-template-columns:1fr}
+  .board{padding-inline:16px}
+  .board-head{padding-inline:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app">
+  <nav class="rail" id="rail"></nav>
+  <div class="main">
+    <header class="topbar" id="topbar"></header>
+    <section id="view"></section>
+    <footer class="statusbar" id="statusbar"></footer>
+  </div>
+</div>
+<div id="drawerRoot"></div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+const I = {
+  home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  board:'<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/>',
+  git:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 4-6 3-11 5"/>',
+  agents:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .7 3.2 2.6 3.5 5.5"/>',
+  doc:'<path d="M6 3h8l5 5v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M8.5 13h7M8.5 17h5"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  branch:'<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-7 4-11 8"/>',
+  tag:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/>',
+  play:'<path d="M7 4.5v15l12-7.5z"/>',
+  pause:'<rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  folder:'<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  down:'<path d="M12 4v13M6 11l6 6 6-6M5 20h14"/>',
+  up:'<path d="M12 20V7M6 13l6-6 6 6M5 4h14"/>',
+  stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  redo:'<path d="M20 7v5h-5"/><path d="M20 12a8 8 0 1 0-2.3 5.7"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  bolt:'<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
+  shield:'<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  merge:'<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="15" r="2"/><path d="M6 7v10M6 9c0 4 5 6 10 6"/>'
+};
+const ic=(n,sw=1.8)=>`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+const T = {
+ru:{
+  nav_home:'Проекты',nav_board:'Доска задач',nav_git:'Git',nav_agents:'Агенты',nav_project:'Проект',nav_settings:'Настройки',
+  queue_running:'Очередь работает',queue_paused:'Очередь на паузе',start:'Запустить',pause:'Пауза',
+  new_task:'Задача',board:'Доска',all:'Все',mine:'Мои',
+  c_backlog:'Бэклог',c_queue:'Очередь',c_planning:'Планирование',c_approval:'Утверждение плана',c_progress:'В работе',c_review:'Готово к проверке',c_done:'Готово',c_failed:'Ошибка',
+  send:'В работу',approve:'Утвердить план',open:'Открыть',review:'Проверить',retry:'Повторить',
+  s_plan:'План',s_code:'Код',s_tests:'Тесты',s_review:'Ревью',s_security:'Безопасность',s_release:'Релиз',
+  tab_log:'Живой лог',tab_plan:'План',tab_changes:'Изменения',tab_reports:'Отчёты',tab_release:'Версия',
+  iter:'Итерация',stop:'Остановить',accept:'Принять и слить',rework:'На доработку',reject:'Отклонить',
+  edit_plan:'Редактировать',replan:'Перепланировать',plan_wait:'Планировщик подготовил план. Проверьте и утвердите — дальше агенты выполнят всё автоматически до финального ревью.',
+  replan_ph:'Комментарий для планировщика, например: «не трогай публичный API, добавь feature-флаг»',
+  tests:'Тесты',passed:'пройдено',reviewer:'Code review',approved:'Одобрено',minor:'замечания',security:'Безопасность',no_high:'Нет критичных',
+  cost:'Стоимость (оценка)',duration:'Время',issues:'Замечания',
+  bump_title:'Поднятие версии',bump_hint:'Агент релиза предложил MINOR: новая функциональность без breaking changes. Можно изменить.',
+  patch_d:'Исправления',minor_d:'Новая функциональность',major_d:'Несовместимые изменения',changelog:'Запись в CHANGELOG.md',
+  branch:'ветка',base:'в',
+  home_title:'Veltrix',home_sub:'IDE для управления ИИ-агентами. Откройте проект — Veltrix учтёт его CLAUDE.md, агенты и настройки .claude.',
+  open_folder:'Открыть папку',clone:'Клонировать репозиторий',recent:'Недавние проекты',env:'Окружение',
+  env_claude:'Claude Code найден',env_login:'Вход выполнен · подписка Pro',env_git:'Git установлен',env_node:'Node.js для тестов проекта',
+  tasks_n:'задач',updated:'обновлён',
+  git_changes:'Изменения в рабочей копии',git_commit:'Сообщение коммита',git_gen:'Сгенерировать сообщение',commit:'Закоммитить',
+  git_branches:'Ветки',git_history:'История',pull:'Pull',push:'Push',fetch:'Fetch',stash:'Stash',checkout:'Переключиться',
+  ag_title:'Агенты',ag_sub:'Предустановленные агенты полного цикла. Можно менять промпт, модель и доступные инструменты; переопределения проекта хранятся в .veltrix/agents.',
+  model:'Модель',perm:'Режим разрешений',tools_l:'Инструменты',prompt_l:'Системный промпт',save:'Сохранить',reset:'Сбросить к стандарту',
+  a_planner:'Планировщик',a_developer:'Разработчик',a_tester:'Тестировщик',a_reviewer:'Ревьюер',a_security:'Аудитор безопасности',a_release:'Релиз-менеджер',
+  ad_planner:'Изучает код и пишет план',ad_developer:'Реализует утверждённый план',ad_tester:'Пишет и запускает тесты',ad_reviewer:'Проверяет качество кода',ad_security:'Ищет уязвимости и секреты',ad_release:'Версия, CHANGELOG, коммит',
+  pipeline:'Конвейер',max_iter:'Лимит итераций исправлений',
+  proj_title:'Проект',claude_md:'CLAUDE.md',versions:'Версии',create_md:'Обновить через /init',
+  set_title:'Настройки',lang:'Язык интерфейса',theme:'Тема',theme_sys:'Системная',theme_light:'Светлая',theme_dark:'Тёмная',
+  set_iter_d:'Сколько раз задача возвращается разработчику после провала тестов/ревью',set_base:'Базовая ветка',set_base_d:'Куда сливаются принятые задачи',
+  set_path:'Путь к claude',set_path_d:'Определяется автоматически',set_model:'Модель по умолчанию',set_auto:'Автопродолжение после лимита',set_auto_d:'Пауза при достижении лимита подписки и продолжение после сброса',
+  on:'Вкл',off:'Выкл',
+  nt_title:'Новая задача',nt_name:'Название',nt_desc:'Описание',nt_type:'Тип',nt_prio:'Приоритет',save_backlog:'В бэклог',save_queue:'Создать и в очередь',cancel:'Отмена',
+  nt_ph:'Например: Добавить тёмную тему в настройки',nt_dph:'Что нужно сделать, критерии готовности, ограничения…',
+  low:'Низкий',normal:'Обычный',high:'Высокий',
+  limit:'Лимит сессии',limit_v:'38% использовано · сброс 18:40',running:'Выполняется',queue_n:'в очереди',
+  toast_merge:'Слито в main · тег v1.5.0 создан',toast_approved:'План утверждён — задача ушла в работу',toast_created:'Задача создана',toast_moved:'Задача перемещена',toast_saved:'Сохранено',toast_committed:'Коммит создан',toast_rework:'Отправлено на доработку',toast_reject:'Ветка удалена, задача отклонена',
+  failed_note:'Проверка безопасности не пройдена после 3 итераций',approval_note:'План ждёт вашего решения',review_note:'Все проверки пройдены',
+  prev_versions:'История версий',
+  live:'в эфире',
+},
+en:{
+  nav_home:'Projects',nav_board:'Task board',nav_git:'Git',nav_agents:'Agents',nav_project:'Project',nav_settings:'Settings',
+  queue_running:'Queue running',queue_paused:'Queue paused',start:'Start',pause:'Pause',
+  new_task:'Task',board:'Board',all:'All',mine:'Mine',
+  c_backlog:'Backlog',c_queue:'Queue',c_planning:'Planning',c_approval:'Plan approval',c_progress:'In progress',c_review:'Ready for review',c_done:'Done',c_failed:'Failed',
+  send:'Send to work',approve:'Approve plan',open:'Open',review:'Review',retry:'Retry',
+  s_plan:'Plan',s_code:'Code',s_tests:'Tests',s_review:'Review',s_security:'Security',s_release:'Release',
+  tab_log:'Live log',tab_plan:'Plan',tab_changes:'Changes',tab_reports:'Reports',tab_release:'Version',
+  iter:'Iteration',stop:'Stop',accept:'Accept & merge',rework:'Request rework',reject:'Reject',
+  edit_plan:'Edit',replan:'Re-plan',plan_wait:'The planner has prepared a plan. Review and approve it — agents will then run everything automatically up to the final review.',
+  replan_ph:'Comment for the planner, e.g. “don’t touch the public API, add a feature flag”',
+  tests:'Tests',passed:'passed',reviewer:'Code review',approved:'Approved',minor:'comments',security:'Security',no_high:'No critical issues',
+  cost:'Cost (estimate)',duration:'Duration',issues:'Findings',
+  bump_title:'Version bump',bump_hint:'The release agent suggests MINOR: new functionality, no breaking changes. You can override it.',
+  patch_d:'Bug fixes',minor_d:'New functionality',major_d:'Breaking changes',changelog:'CHANGELOG.md entry',
+  branch:'branch',base:'into',
+  home_title:'Veltrix',home_sub:'An IDE for managing AI agents. Open a project — Veltrix respects its CLAUDE.md, agents and .claude settings.',
+  open_folder:'Open folder',clone:'Clone repository',recent:'Recent projects',env:'Environment',
+  env_claude:'Claude Code found',env_login:'Signed in · Pro subscription',env_git:'Git installed',env_node:'Node.js for project tests',
+  tasks_n:'tasks',updated:'updated',
+  git_changes:'Working tree changes',git_commit:'Commit message',git_gen:'Generate message',commit:'Commit',
+  git_branches:'Branches',git_history:'History',pull:'Pull',push:'Push',fetch:'Fetch',stash:'Stash',checkout:'Checkout',
+  ag_title:'Agents',ag_sub:'Built-in agents for the full cycle. Change the prompt, model and allowed tools; project overrides live in .veltrix/agents.',
+  model:'Model',perm:'Permission mode',tools_l:'Tools',prompt_l:'System prompt',save:'Save',reset:'Reset to default',
+  a_planner:'Planner',a_developer:'Developer',a_tester:'Tester',a_reviewer:'Reviewer',a_security:'Security auditor',a_release:'Release manager',
+  ad_planner:'Explores the code and writes a plan',ad_developer:'Implements the approved plan',ad_tester:'Writes and runs tests',ad_reviewer:'Checks code quality',ad_security:'Hunts vulnerabilities and secrets',ad_release:'Version, CHANGELOG, commit',
+  pipeline:'Pipeline',max_iter:'Fix iteration limit',
+  proj_title:'Project',claude_md:'CLAUDE.md',versions:'Versions',create_md:'Update via /init',
+  set_title:'Settings',lang:'Interface language',theme:'Theme',theme_sys:'System',theme_light:'Light',theme_dark:'Dark',
+  set_iter_d:'How many times a task goes back to the developer after failed tests/review',set_base:'Base branch',set_base_d:'Where accepted tasks are merged',
+  set_path:'Path to claude',set_path_d:'Detected automatically',set_model:'Default model',set_auto:'Auto-resume after limit',set_auto_d:'Pause when the subscription limit is hit and resume after reset',
+  on:'On',off:'Off',
+  nt_title:'New task',nt_name:'Title',nt_desc:'Description',nt_type:'Type',nt_prio:'Priority',save_backlog:'Add to backlog',save_queue:'Create & queue',cancel:'Cancel',
+  nt_ph:'e.g. Add a dark theme to settings',nt_dph:'What needs doing, acceptance criteria, constraints…',
+  low:'Low',normal:'Normal',high:'High',
+  limit:'Session limit',limit_v:'38% used · resets 18:40',running:'Running',queue_n:'queued',
+  toast_merge:'Merged into main · tag v1.5.0 created',toast_approved:'Plan approved — task is in progress',toast_created:'Task created',toast_moved:'Task moved',toast_saved:'Saved',toast_committed:'Commit created',toast_rework:'Sent back for rework',toast_reject:'Branch deleted, task rejected',
+  failed_note:'Security check failed after 3 iterations',approval_note:'Plan awaits your decision',review_note:'All checks passed',
+  prev_versions:'Version history',
+  live:'live',
+}};
+const S={lang:'ru',view:'board',queue:true,sel:null,tab:'log',agent:'planner',bump:'minor',file:0,themeMode:'sys'};
+try{const l=localStorage.getItem('vx_lang');if(l)S.lang=l}catch(e){}
+const t=k=>T[S.lang][k]??k;
+const L=o=>typeof o==='string'?o:o[S.lang];
+
+const COLS=[['backlog','var(--faint)'],['queue','var(--info)'],['planning','var(--violet)'],['approval','var(--accent)'],['progress','var(--accent)'],['review','var(--ok)'],['done','var(--teal)'],['failed','var(--bad)']];
+const STAGES=['plan','code','tests','review','security','release'];
+const AG={planner:['var(--info)','var(--info-soft)','P'],developer:['var(--accent-ink)','var(--accent-soft)','D'],tester:['var(--ok)','var(--ok-soft)','T'],reviewer:['var(--violet)','var(--violet-soft)','R'],security:['var(--bad)','var(--bad-soft)','S'],release:['var(--teal)','var(--teal-soft)','V']};
+const STAGE_AG={plan:'planner',code:'developer',tests:'tester',review:'reviewer',security:'security',release:'release'};
+
+let TASKS=[
+ {id:'VX-21',title:{ru:'Поиск по задачам с фильтрами по тегам',en:'Task search with tag filters'},type:'feature',p:1,col:'backlog'},
+ {id:'VX-22',title:{ru:'Импорт задач из GitHub Issues',en:'Import tasks from GitHub Issues'},type:'feature',p:2,col:'backlog'},
+ {id:'VX-23',title:{ru:'Вынести форматирование дат в утилиту',en:'Extract date formatting into a utility'},type:'refactor',p:1,col:'backlog'},
+ {id:'VX-17',title:{ru:'Исправить неверный подсчёт итогов в корзине',en:'Fix wrong cart totals calculation'},type:'fix',p:3,col:'queue'},
+ {id:'VX-18',title:{ru:'Пагинация в API заказов',en:'Pagination for the orders API'},type:'feature',p:2,col:'queue'},
+ {id:'VX-16',title:{ru:'Кэширование профиля пользователя',en:'Cache user profile'},type:'refactor',p:2,col:'planning',st:['a','','','','',''],time:'0:42'},
+ {id:'VX-15',title:{ru:'Утечка памяти в WebSocket-переподключении',en:'Memory leak on WebSocket reconnect'},type:'fix',p:3,col:'approval',st:['w','','','','',''],time:'2:10'},
+ {id:'VX-14',title:{ru:'Вход через GitHub OAuth',en:'Sign in with GitHub OAuth'},type:'feature',p:3,col:'progress',st:['d','d','a','','',''],iter:2,time:'14:36',cost:'$0.84'},
+ {id:'VX-12',title:{ru:'Экспорт отчёта в CSV',en:'Export report to CSV'},type:'feature',p:2,col:'review',st:['d','d','d','d','d','d'],time:'21:05',cost:'$1.12',ver:'1.5.0'},
+ {id:'VX-13',title:{ru:'Миграция на Postgres 17',en:'Migrate to Postgres 17'},type:'breaking',p:2,col:'failed',st:['d','d','d','d','f',''],iter:3,time:'38:12',cost:'$2.40'},
+ {id:'VX-11',title:{ru:'Тёмная тема для дашборда',en:'Dark theme for the dashboard'},type:'feature',p:1,col:'done',ver:'1.4.0'},
+ {id:'VX-10',title:{ru:'Падение при пустом email',en:'Crash on empty email'},type:'fix',p:3,col:'done',ver:'1.4.2'},
+ {id:'VX-9',title:{ru:'Обновить зависимости',en:'Update dependencies'},type:'refactor',p:1,col:'done',ver:'1.4.1'},
+];
+
+/* ---------- shell ---------- */
+function renderRail(){
+  const items=[['home','home'],['board','board'],['git','git'],['agents','agents'],['project','doc']];
+  document.getElementById('rail').innerHTML=`<div class="logo">V</div>`+
+   items.map(([v,i])=>`<button class="rail-btn ${S.view===v?'on':''}" data-view="${v}" aria-label="${t('nav_'+v)}">${ic(i)}<span class="tip">${t('nav_'+v)}</span></button>`).join('')+
+   `<div class="spacer"></div><button class="rail-btn ${S.view==='settings'?'on':''}" data-view="settings" aria-label="${t('nav_settings')}">${ic('gear')}<span class="tip">${t('nav_settings')}</span></button>`;
+}
+function renderTop(){
+  const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('topbar').innerHTML=`
+   <button class="proj" data-view="home">${ic('folder')} shop-api <small>D:\\Projects\\shop-api</small></button>
+   <span class="chip">${ic('branch')} veltrix/VX-14-github-oauth</span>
+   <span class="chip">${ic('tag')} v1.4.2</span>
+   <div class="grow"></div>
+   <div class="queue"><span class="dot ${S.queue?'live':''}"></span>${S.queue?t('queue_running'):t('queue_paused')}
+     <button class="btn sm" id="qbtn">${ic(S.queue?'pause':'play')}${S.queue?t('pause'):t('start')}</button></div>
+   <button class="btn primary" id="newTask">${ic('plus',2.2)}${t('new_task')}</button>
+   <div class="seg" role="group" aria-label="Language"><button data-lang="ru" class="${S.lang==='ru'?'on':''}">RU</button><button data-lang="en" class="${S.lang==='en'?'on':''}">EN</button></div>
+   <button class="btn ghost" id="themeBtn" aria-label="Theme">${ic(dark?'sun':'moon')}</button>`;
+}
+function renderStatus(){
+  const q=TASKS.filter(x=>x.col==='queue').length;
+  document.getElementById('statusbar').innerHTML=`
+   <span><span class="dot ${S.queue?'live':''}"></span>${t('running')}: VX-14 · ${t('s_tests')} · ${t('iter')} 2/3</span>
+   <span>${q} ${t('queue_n')}</span>
+   <span class="grow"></span>
+   <span>${ic('clock')} ${t('limit')} <span class="meter"><i style="width:38%"></i></span> ${t('limit_v')}</span>
+   <span class="mono">claude 2.1.280</span>`;
+}
+
+/* ---------- board ---------- */
+function mini(st){return `<div class="mini">${STAGES.map((_,i)=>`<i class="${st&&st[i]?(st[i]==='w'?'a':st[i]):''}"></i>`).join('')}</div>`}
+function cardHTML(x){
+  const tp=`<span class="tag t-${x.type}">${x.type}</span>`;
+  const pr=`<span class="prio p${x.p}"><i></i><i></i><i></i></span>`;
+  let extra='';
+  if(x.col==='backlog')extra=`<div class="act"><button class="btn sm" data-send="${x.id}">${ic('play')}${t('send')}</button></div>`;
+  if(x.col==='approval')extra=`<div class="card-note note-warn">${t('approval_note')}</div><div class="act"><button class="btn sm primary" data-open="${x.id}" data-tab="plan">${t('approve')}</button></div>`;
+  if(x.col==='progress')extra=`${mini(x.st)}<div class="meta">${ic('bolt')} ${t('s_tests')} · ${t('iter')} ${x.iter}/3</div>`;
+  if(x.col==='planning')extra=`${mini(x.st)}`;
+  if(x.col==='review')extra=`${mini(x.st)}<div class="card-note note-ok">${t('review_note')} · v${x.ver}</div>`;
+  if(x.col==='failed')extra=`${mini(x.st)}<div class="card-note note-bad">${t('failed_note')}</div>`;
+  const tail=x.time?`<span class="tnum">${x.time}</span>`:'';
+  const ver=x.col==='done'?`<span class="reftag">v${x.ver}</span>`:'';
+  return `<article class="card ${S.sel===x.id?'sel':''}" draggable="true" data-card="${x.id}">
+    <div class="top"><span class="id">${x.id}</span>${tp}<span class="grow"></span>${pr}</div>
+    <div class="ttl">${L(x.title)}</div>${extra}
+    ${(tail||ver||x.cost)?`<div class="meta">${ver}${tail}${x.cost?`<span>·</span><span class="tnum">${x.cost}</span>`:''}</div>`:''}
+  </article>`;
+}
+function vBoard(){
+  return `<div class="board-head"><h2>${t('board')}</h2><div class="filters"><button class="btn sm">${t('all')}</button>
+    <span class="chip">feature</span><span class="chip">fix</span><span class="chip">refactor</span></div></div>
+  <div class="board">${COLS.map(([c,col])=>{const items=TASKS.filter(x=>x.col===c);
+    return `<div class="col" data-col="${c}"><div class="col-h"><span class="sw" style="background:${col}"></span>${t('c_'+c)}<span class="n">${items.length}</span></div>
+    <div class="col-b">${items.map(cardHTML).join('')}${c==='backlog'?`<button class="add-inline" id="addInline">+ ${t('new_task')}</button>`:''}</div></div>`}).join('')}</div>`;
+}
+
+/* ---------- drawer ---------- */
+const LOG=[
+ ['14:02:11','sys','',{ru:'Этап «Тесты» · агент tester · итерация 2/3 · сессия resume 7f3a…c21',en:'Stage “Tests” · agent tester · iteration 2/3 · resumed session 7f3a…c21'}],
+ ['14:02:13','tester','text',{ru:'Прочитаю изменения разработчика после прошлой итерации и перезапущу упавшие тесты.',en:'Reading the developer’s changes since the last iteration and re-running the failing tests.'}],
+ ['14:02:14','tester','tool',['Read','src/auth/github.ts','ok','export async function exchangeCode(code: string) {\n  const res = await fetch(TOKEN_URL, { method: "POST", ... })\n  if (!res.ok) throw new OAuthError(res.status)\n  ...']],
+ ['14:02:19','tester','tool',['Bash','npm test -- auth','ok','PASS  tests/auth/github.test.ts (12 tests)\nPASS  tests/auth/session.test.ts (6 tests)\n\nTests: 18 passed, 18 total\nTime:  3.41 s']],
+ ['14:02:20','tester','text',{ru:'Тесты авторизации проходят. Добавлю тест на истёкший state-параметр (CSRF), его не было.',en:'Auth tests pass. Adding a test for an expired state parameter (CSRF) — it was missing.'}],
+ ['14:02:26','tester','tool',['Edit','tests/auth/github.test.ts','ok','+ it("rejects expired state", async () => {\n+   const res = await callback({ code: "x", state: expiredState })\n+   expect(res.status).toBe(403)\n+ })']],
+ ['14:02:31','tester','tool',['Bash','npm test','ok','Tests: 142 passed, 142 total\nCoverage: 87.4% (+1.2%)']],
+];
+const LOG_MORE=[
+ ['tester','text',{ru:'Все 142 теста проходят. Формирую отчёт.',en:'All 142 tests pass. Writing the report.'}],
+ ['sys','',{ru:'Отчёт тестировщика: passed=true · этап «Ревью» запускается…',en:'Tester report: passed=true · starting “Review” stage…'}],
+ ['reviewer','text',{ru:'Смотрю diff ветки относительно main: 7 файлов, +214 −18.',en:'Reviewing the branch diff against main: 7 files, +214 −18.'}],
+ ['reviewer','tool',['Grep','"client_secret" src/','ok','src/config.ts:14: clientSecret: process.env.GITHUB_CLIENT_SECRET']],
+];
+let logExtra=[],logTimer=null;
+function evHTML(e){
+  const [ts,who,kind,body]=e;
+  if(who==='sys')return `<div class="ev"><span class="ts">${ts}</span><div class="sysline">${L(body)}</div></div>`;
+  const a=AG[who];
+  const head=`<div class="who" style="color:${a[0]}"><span class="dot" style="background:${a[0]}"></span>${t('a_'+who)}</div>`;
+  if(kind==='text')return `<div class="ev"><span class="ts">${ts}</span><div>${head}<div class="txt">${L(body)}</div></div></div>`;
+  const [tn,arg,r,out]=body;
+  return `<div class="ev"><span class="ts">${ts}</span><div>${head}<details class="tool"><summary>${ic('chev')}<span class="tn">${tn}</span><span>${arg}</span><span class="res" style="color:var(--ok)">✓</span></summary><pre>${out.replace(/</g,'&lt;')}</pre></details></div></div>`;
+}
+function tabLog(x){
+  if(x.col!=='progress'&&x.col!=='planning')return `<div class="log">${LOG.slice(0,2).map(evHTML).join('')}<div class="sysline">…</div></div>`;
+  return `<div class="log" id="log">${[...LOG,...logExtra].map(evHTML).join('')}<div class="ev"><span class="ts"></span><div><span class="caret"></span></div></div></div>`;
+}
+function tabPlan(x){
+  const wait=x.col==='approval';
+  return `${wait?`<div class="callout">${ic('info')}<div>${t('plan_wait')}</div></div>`:''}
+  <div class="md">${S.lang==='ru'?`
+   <h3>Причина</h3><p>При каждом переподключении <code>SocketClient</code> добавляет новые обработчики <code>message</code>, не удаляя старые. За сутки работы вкладки накапливаются тысячи слушателей.</p>
+   <h3>Изменения</h3><ol><li><code>src/ws/client.ts</code> — хранить ссылки на обработчики и снимать их в <code>teardown()</code> перед переподключением.</li><li>Экспоненциальная задержка переподключения с потолком 30 с.</li><li><code>src/ws/heartbeat.ts</code> — очищать <code>setInterval</code> при закрытии.</li></ol>
+   <h3>Тесты</h3><ul><li>Юнит-тест: после 50 переподключений число слушателей = 1.</li><li>Тест на очистку таймера heartbeat.</li></ul>
+   <h3>Риски</h3><ul><li>Публичный API <code>SocketClient</code> не меняется → ожидается PATCH.</li></ul>`:`
+   <h3>Cause</h3><p>On every reconnect <code>SocketClient</code> adds new <code>message</code> handlers without removing old ones. After a day, a tab accumulates thousands of listeners.</p>
+   <h3>Changes</h3><ol><li><code>src/ws/client.ts</code> — keep handler references and remove them in <code>teardown()</code> before reconnecting.</li><li>Exponential reconnect backoff capped at 30 s.</li><li><code>src/ws/heartbeat.ts</code> — clear the <code>setInterval</code> on close.</li></ol>
+   <h3>Tests</h3><ul><li>Unit test: after 50 reconnects the listener count is 1.</li><li>Heartbeat timer cleanup test.</li></ul>
+   <h3>Risks</h3><ul><li>Public <code>SocketClient</code> API is unchanged → PATCH expected.</li></ul>`}
+  </div>
+  ${wait?`<div class="field" style="margin-top:18px"><label for="replanTxt">${t('replan')}</label><textarea class="inp" id="replanTxt" placeholder="${t('replan_ph')}"></textarea></div>`:''}`;
+}
+const FILES=[['M','src/reports/export.ts',84,6],['A','src/reports/csv.ts',61,0],['A','tests/reports/csv.test.ts',48,0],['M','src/routes/reports.ts',12,3],['M','CHANGELOG.md',7,0],['M','package.json',1,1]];
+function tabChanges(){
+  const rows=[['h','','','@@ -1,9 +1,14 @@'],['','1','1','import { Router } from "express"'],['','2','2','import { getReport } from "./report"'],['a','','3','import { toCsv } from "./csv"'],['','3','4',''],['','4','5','export async function exportReport(id: string, format: Format) {'],['r','5','','  if (format !== "json") throw new Error("Unsupported")'],['a','','6','  const report = await getReport(id)'],['a','','7','  switch (format) {'],['a','','8','    case "csv": return { body: toCsv(report.rows), type: "text/csv" }'],['a','','9','    case "json": return { body: JSON.stringify(report), type: "application/json" }'],['a','','10','    default: throw new UnsupportedFormatError(format)'],['a','','11','  }'],['','6','12','}']];
+  return `<div class="files">${FILES.map((f,i)=>`<button class="fl ${S.file===i?'on':''}" data-file="${i}"><span class="st" style="color:${f[0]==='A'?'var(--ok)':'var(--warn)'}">${f[0]}</span><span>${f[1]}</span><span class="grow"></span><span class="add">+${f[2]}</span><span class="del">−${f[3]}</span></button>`).join('')}</div>
+  <div class="diff"><div class="fh">${FILES[S.file][1]}</div><table>${rows.map(r=>`<tr class="${r[0]}"><td class="ln">${r[1]}</td><td class="ln">${r[2]}</td><td>${r[0]==='a'?'+ ':r[0]==='r'?'− ':'  '}${r[3].replace(/</g,'&lt;')}</td></tr>`).join('')}</table></div>`;
+}
+function tabReports(x){
+  const iss=S.lang==='ru'?[['low','src/reports/csv.ts:22','Экранирование кавычек сделано вручную — можно вынести в хелпер.','reviewer'],['low','src/reports/export.ts:9','Нет лимита на размер отчёта; для больших выборок лучше стрим.','reviewer'],['low','src/reports/csv.ts:30','CSV-инъекция: значения, начинающиеся с = + - @, экранируются. ✓','security']]
+   :[['low','src/reports/csv.ts:22','Quote escaping is hand-rolled — could be extracted into a helper.','reviewer'],['low','src/reports/export.ts:9','No report size limit; streaming would be better for big exports.','reviewer'],['low','src/reports/csv.ts:30','CSV injection: values starting with = + - @ are escaped. ✓','security']];
+  return `<div class="reps">
+   <div class="rep"><span class="label">${t('tests')}</span><span class="big tnum">142/142</span><span class="v" style="color:var(--ok)">${ic('check',2.4)} ${t('passed')} · coverage 87.4%</span></div>
+   <div class="rep"><span class="label">${t('reviewer')}</span><span class="big">${t('approved')}</span><span class="v" style="color:var(--info)">2 ${t('minor')} · low</span></div>
+   <div class="rep"><span class="label">${t('security')}</span><span class="big">0 high</span><span class="v" style="color:var(--ok)">${ic('shield')} ${t('no_high')} · npm audit ✓</span></div>
+   <div class="rep"><span class="label">${t('cost')} · ${t('duration')}</span><span class="big tnum">${x.cost||'$1.12'}</span><span class="v" style="color:var(--muted)">${x.time||'21:05'} · 6 ${S.lang==='ru'?'агентов':'agents'}</span></div>
+  </div>
+  <div class="label" style="margin-bottom:8px">${t('issues')}</div>
+  <div class="issues">${iss.map(i=>`<div class="issue"><span class="sev ${i[0]}">${i[0]}</span><div><div>${i[2]}</div><div class="loc">${i[1]}</div></div><span class="tag" style="background:${AG[i[3]][1]};color:${AG[i[3]][0]}">${t('a_'+i[3])}</span></div>`).join('')}</div>`;
+}
+function tabRelease(){
+  const v={patch:'1.4.3',minor:'1.5.0',major:'2.0.0'}[S.bump];
+  return `<div class="label">${t('bump_title')}</div>
+  <div class="ver" style="margin-top:10px"><span class="old">1.4.2</span>${ic('chev')}<span class="new">${v}</span></div>
+  <p style="color:var(--muted);font-size:13px">${t('bump_hint')}</p>
+  <div class="bump">${['patch','minor','major'].map(b=>`<button class="${S.bump===b?'on':''}" data-bump="${b}"><b>${b.toUpperCase()}</b><span>${t(b+'_d')}</span></button>`).join('')}</div>
+  <div class="label" style="margin-bottom:8px">${t('changelog')}</div>
+  <div class="chlog">## [${v}] — 2026-09-22
+### Added
+- ${S.lang==='ru'?'Экспорт отчётов в CSV (GET /reports/:id?format=csv)':'Report export to CSV (GET /reports/:id?format=csv)'}
+- ${S.lang==='ru'?'Защита от CSV-инъекций':'CSV injection protection'}
+
+### Changed
+- ${S.lang==='ru'?'Неподдерживаемый формат возвращает 415':'Unsupported format now returns 415'}</div>`;
+}
+function renderDrawer(){
+  const root=document.getElementById('drawerRoot');
+  clearInterval(logTimer);
+  if(!S.sel){root.innerHTML='';return}
+  const x=TASKS.find(z=>z.id===S.sel);
+  const st=x.st||['','','','','',''];
+  const tabs=[['log'],['plan'],['changes',FILES.length],['reports'],['release']];
+  let body={log:tabLog,plan:tabPlan,changes:tabChanges,reports:tabReports,release:tabRelease}[S.tab](x);
+  let foot='';
+  if(x.col==='approval')foot=`<button class="btn primary" data-act="approve">${ic('check',2.2)}${t('approve')}</button><button class="btn" data-act="edit">${ic('edit')}${t('edit_plan')}</button><button class="btn" data-act="replan">${ic('redo')}${t('replan')}</button>`;
+  else if(x.col==='review')foot=`<button class="btn ok" data-act="accept">${ic('merge')}${t('accept')}</button><button class="btn" data-act="rework">${ic('redo')}${t('rework')}</button><span class="grow"></span><button class="btn danger" data-act="reject">${ic('trash')}${t('reject')}</button>`;
+  else if(x.col==='progress'||x.col==='planning')foot=`<span class="chip"><span class="dot live"></span>${t('live')}</span><span class="grow"></span><button class="btn danger" data-act="stop">${ic('stop')}${t('stop')}</button>`;
+  else if(x.col==='failed')foot=`<button class="btn primary" data-act="retry">${ic('redo')}${t('retry')}</button><span class="grow"></span><button class="btn danger" data-act="reject">${ic('trash')}${t('reject')}</button>`;
+  else if(x.col==='backlog')foot=`<button class="btn primary" data-send="${x.id}">${ic('play')}${t('send')}</button>`;
+  root.innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-label="${L(x.title)}">
+   <div class="dr-h"><div class="row"><span class="mono" style="color:var(--faint);font-size:12px">${x.id}</span><span class="tag t-${x.type}">${x.type}</span>
+     <span class="chip">${ic('branch')} veltrix/${x.id}-${x.type} ${t('base')} main</span>${x.iter?`<span class="chip">${t('iter')} ${x.iter}/3</span>`:''}<span class="grow"></span><button class="btn ghost" data-close aria-label="Close">${ic('x')}</button></div>
+     <h2>${L(x.title)}</h2>
+     <div class="stepper">${STAGES.map((s,i)=>`<div class="step ${st[i]}"><div class="bar"></div><b><span class="ag" style="background:${AG[STAGE_AG[s]][0]}"></span>${t('s_'+s)}</b></div>`).join('')}</div></div>
+   <div class="tabs" role="tablist">${tabs.map(([k,c])=>`<button role="tab" class="${S.tab===k?'on':''}" data-tab-btn="${k}">${t('tab_'+k)}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('')}</div>
+   <div class="dr-b" id="drb">${body}</div>
+   ${foot?`<div class="dr-f">${foot}</div>`:''}</aside>`;
+  if(S.tab==='log'&&(x.col==='progress'||x.col==='planning')){
+    const drb=document.getElementById('drb');drb.scrollTop=drb.scrollHeight;
+    let i=logExtra.length;
+    logTimer=setInterval(()=>{if(i>=LOG_MORE.length){clearInterval(logTimer);return}
+      const d=new Date(2026,8,22,14,2,33+i*4);const ts=d.toTimeString().slice(0,8);
+      logExtra.push([ts,...LOG_MORE[i]]);i++;
+      const log=document.getElementById('log');if(!log){clearInterval(logTimer);return}
+      log.lastElementChild.insertAdjacentHTML('beforebegin',evHTML(logExtra[logExtra.length-1]));drb.scrollTop=drb.scrollHeight;},1800);
+  }
+}
+
+/* ---------- other views ---------- */
+function vHome(){
+  const rec=[['shop-api','D:\\Projects\\shop-api','v1.4.2',13,'Node · TypeScript'],['veltrix','D:\\Programming\\veltrix','v0.1.0',4,'Electron · React'],['ml-pipeline','D:\\Work\\ml-pipeline','v3.2.0',9,'Python'],['landing','D:\\Projects\\landing','v0.9.1',2,'Astro']];
+  const env=[['env_claude','claude 2.1.280'],['env_login','claude auth · Pro'],['env_git','git 2.55.0'],['env_node','node 24.18.0']];
+  return `<div class="page"><div class="hero-home"><span class="wm">Veltrix</span><p>${t('home_sub')}</p></div>
+   <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"><button class="btn primary">${ic('folder')}${t('open_folder')}</button><button class="btn">${ic('down')}${t('clone')}</button></div>
+   <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
+    <div><div class="label" style="margin-bottom:10px">${t('recent')}</div><div class="recent">${rec.map(r=>`<button class="pcard" data-view="board"><b>${r[0]}</b><span class="path">${r[1]}</span><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="reftag">${r[2]}</span><span class="chip">${r[3]} ${t('tasks_n')}</span><span class="chip">${r[4]}</span></div></button>`).join('')}</div></div>
+    <div class="panel"><h3>${t('env')}</h3>${env.map(e=>`<div class="check"><span class="ic">${ic('check',3)}</span><div>${t(e[0])}<div class="mono" style="font-size:11.5px;color:var(--faint)">${e[1]}</div></div></div>`).join('')}</div>
+   </div></div>`;
+}
+function vGit(){
+  const ch=[['M','src/ws/client.ts'],['M','src/ws/heartbeat.ts'],['?','notes/todo.md']];
+  const br=[['main','',true],['veltrix/VX-14-github-oauth','↑3',false],['veltrix/VX-12-csv-export','↑5',false],['veltrix/VX-13-postgres17','↑9',false]];
+  const lg=[['a1f93c2',{ru:'feat(auth): обмен кода GitHub на токен',en:'feat(auth): exchange GitHub code for token'},'veltrix',0,'VX-14'],['9be01d4',{ru:'test(auth): CSRF state истёк',en:'test(auth): expired CSRF state'},'veltrix',0,''],['4c7a211',{ru:'Merge VX-10: падение при пустом email',en:'Merge VX-10: crash on empty email'},'you',1,'v1.4.2'],['e02bb90',{ru:'chore(release): v1.4.2',en:'chore(release): v1.4.2'},'veltrix',0,''],['77d31aa',{ru:'fix(users): проверка пустого email',en:'fix(users): validate empty email'},'veltrix',0,''],['3f0c9e8',{ru:'Merge VX-9: обновление зависимостей',en:'Merge VX-9: update dependencies'},'you',1,'v1.4.1']];
+  return `<div class="page"><h1>Git</h1><p class="sub">shop-api · main ← veltrix/VX-14-github-oauth</p>
+   <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap"><button class="btn">${ic('down')}${t('pull')}</button><button class="btn">${ic('up')}${t('push')} <span class="chip" style="padding:0 6px">2</span></button><button class="btn">${ic('redo')}${t('fetch')}</button><button class="btn">${t('stash')}</button></div>
+   <div class="grid2">
+    <div class="panel"><h3>${t('git_changes')} <span class="chip">3</span></h3><div class="list">${ch.map(c=>`<div class="li"><input type="checkbox" checked aria-label="${c[1]}"><span class="mono" style="color:${c[0]==='M'?'var(--warn)':'var(--faint)'};width:12px">${c[0]}</span><span class="mono" style="font-size:12.5px">${c[1]}</span></div>`).join('')}</div>
+      <div class="field" style="margin-top:14px"><label for="cmsg">${t('git_commit')}</label><textarea class="inp" id="cmsg" style="min-height:60px">fix(ws): remove stale listeners on reconnect</textarea></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-toast="toast_committed">${ic('check',2.2)}${t('commit')}</button><button class="btn">${ic('bolt')}${t('git_gen')}</button></div></div>
+    <div class="panel"><h3>${t('git_branches')}</h3><div class="list">${br.map(b=>`<div class="li">${ic('branch')}<span class="mono" style="font-size:12.5px;${b[2]?'font-weight:600':''}">${b[0]}</span>${b[2]?'<span class="refbr">HEAD</span>':''}<span class="grow"></span><span class="sub2">${b[1]}</span>${b[2]?'':`<button class="btn sm">${t('checkout')}</button>`}</div>`).join('')}</div></div>
+   </div>
+   <div class="panel" style="margin-top:16px"><h3>${t('git_history')}</h3><div class="list gitlog">${lg.map(l=>`<div class="li"><span class="graph ${l[3]?'m':''}"><i></i></span><span style="color:var(--accent-ink)">${l[0]}</span><span style="font-family:var(--sans);font-size:13px">${L(l[1])}</span>${l[4]?(l[4].startsWith('v')?`<span class="reftag">${l[4]}</span>`:`<span class="refbr">${l[4]}</span>`):''}<span class="grow"></span><span class="sub2">${l[2]}</span></div>`).join('')}</div></div></div>`;
+}
+const PROMPTS={
+ planner:`You are the Planner. Read CLAUDE.md and the relevant code.\nProduce a concise implementation plan:\n- Cause / context\n- Files to change and why\n- Tests to add\n- Risks and expected semver bump (PATCH/MINOR/MAJOR)\nDo NOT modify files.`,
+ developer:`You are the Developer. Implement exactly the approved plan.\nFollow the conventions in CLAUDE.md. Keep changes minimal.\nCommit with Conventional Commits messages.\nIf you receive findings from tester/reviewer/security, fix them all.`,
+ tester:`You are the Tester. Detect the project's test command.\nAdd or update tests covering the change, run the full suite.\nReturn JSON: {"passed": bool, "failures": [...], "coverage": number}`,
+ reviewer:`You are the Code Reviewer. Review the branch diff vs base.\nCheck correctness, readability, duplication, edge cases.\nReturn JSON: {"verdict": "approve"|"changes_requested", "issues": [...]}`,
+ security:`You are the Security Auditor. Inspect the diff for secrets,\ninjection, authz gaps, unsafe deps (run npm audit / pip-audit).\nReturn JSON: {"issues": [{"severity": "low|medium|high|critical", ...}]}`,
+ release:`You are the Release Manager. Decide the semver bump from the\ntask type and diff. Update version files and CHANGELOG.md\n(Keep a Changelog format). Commit "chore(release): vX.Y.Z".`
+};
+const AGCFG={planner:['opus','plan',['Read','Grep','Glob','WebFetch']],developer:['sonnet','acceptEdits',['Read','Edit','Write','Bash','Grep','Glob']],tester:['sonnet','acceptEdits',['Read','Edit','Write','Bash']],reviewer:['opus','plan',['Read','Grep','Glob','Bash(git diff)']],security:['opus','plan',['Read','Grep','Bash(npm audit)']],release:['haiku','acceptEdits',['Read','Edit','Bash(git)']]};
+function vAgents(){
+  const a=S.agent,c=AGCFG[a];
+  return `<div class="page"><h1>${t('ag_title')}</h1><p class="sub">${t('ag_sub')}</p>
+   <div class="label" style="margin-bottom:8px">${t('pipeline')}</div>
+   <div class="flow">${STAGES.map((s,i)=>`<span class="node"><span class="dot" style="background:${AG[STAGE_AG[s]][0]}"></span>${t('a_'+STAGE_AG[s])}</span>${i<5?`<span class="arr">→</span>`:''}`).join('')}<span class="chip" style="margin-left:8px">${ic('redo')} ${t('s_tests')}/${t('s_review')}/${t('s_security')} → ${t('a_developer')} · ≤3</span></div>
+   <div class="agents"><div class="agl">${Object.keys(AG).map(k=>`<button class="${a===k?'on':''}" data-agent="${k}"><span class="av" style="background:${AG[k][1]};color:${AG[k][0]}">${AG[k][2]}</span><span>${t('a_'+k)}<small>${t('ad_'+k)}</small></span></button>`).join('')}</div>
+   <div class="panel"><h3><span class="av" style="width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:12px;background:${AG[a][1]};color:${AG[a][0]}">${AG[a][2]}</span>${t('a_'+a)} <span class="chip mono">resources/agents/${a}.md</span></h3>
+    <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+     <div class="field"><label for="agModel">${t('model')}</label><select class="inp" id="agModel">${['opus','sonnet','haiku'].map(m=>`<option ${m===c[0]?'selected':''}>${m}</option>`).join('')}</select></div>
+     <div class="field"><label for="agPerm">${t('perm')}</label><select class="inp" id="agPerm">${['plan','acceptEdits','default'].map(m=>`<option ${m===c[1]?'selected':''}>${m}</option>`).join('')}</select></div></div>
+    <div class="field"><label>${t('tools_l')}</label><div class="tools">${['Read','Edit','Write','Bash','Grep','Glob','WebFetch'].map(x=>`<label><input type="checkbox" ${c[2].some(y=>y.startsWith(x))?'checked':''}>${x}</label>`).join('')}</div></div>
+    <div class="field"><label for="agPrompt">${t('prompt_l')}</label><textarea class="inp prompt" id="agPrompt">${PROMPTS[a]}</textarea></div>
+    <div style="display:flex;gap:8px"><button class="btn primary" data-toast="toast_saved">${t('save')}</button><button class="btn ghost">${t('reset')}</button></div></div></div></div>`;
+}
+function vProject(){
+  return `<div class="page"><h1>${t('proj_title')} · shop-api</h1><p class="sub mono" style="font-size:12px">D:\\Projects\\shop-api</p>
+   <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
+    <div class="panel"><h3>${ic('doc')} ${t('claude_md')}<span class="grow"></span><button class="btn sm">${ic('bolt')}${t('create_md')}</button><button class="btn sm">${ic('edit')}</button></h3>
+     <div class="chlog" style="font-size:12.5px"># shop-api
+
+REST API for the shop. Node 24, TypeScript, Express, Postgres.
+
+## Commands
+- \`npm run dev\` — start with watch
+- \`npm test\` — vitest, must pass before commit
+- \`npm run lint\` — eslint + prettier
+
+## Conventions
+- Conventional Commits
+- No default exports; one module per file
+- DB access only via src/db/repositories/*</div></div>
+    <div class="panel"><h3>${ic('tag')} ${t('prev_versions')}</h3><div class="list">${[['v1.4.2','VX-10','2026-09-19'],['v1.4.1','VX-9','2026-09-17'],['v1.4.0','VX-11','2026-09-15'],['v1.3.0','VX-6','2026-09-08'],['v1.2.1','VX-5','2026-09-02']].map(v=>`<div class="li"><span class="reftag">${v[0]}</span><span class="mono" style="font-size:12px">${v[1]}</span><span class="grow"></span><span class="sub2">${v[2]}</span></div>`).join('')}</div></div>
+   </div></div>`;
+}
+function vSettings(){
+  return `<div class="page" style="max-width:820px"><h1>${t('set_title')}</h1><p class="sub">%APPDATA%\\Veltrix\\veltrix.db</p>
+   <div class="panel">
+    <div class="set-row"><div>${t('lang')}</div><div class="seg"><button data-lang="ru" class="${S.lang==='ru'?'on':''}">Русский</button><button data-lang="en" class="${S.lang==='en'?'on':''}">English</button></div></div>
+    <div class="set-row"><div>${t('theme')}</div><div class="seg">${['sys','light','dark'].map(m=>`<button data-theme-set="${m}" class="${S.themeMode===m?'on':''}">${t('theme_'+(m==='sys'?'sys':m))}</button>`).join('')}</div></div>
+    <div class="set-row"><div>${t('max_iter')}<p>${t('set_iter_d')}</p></div><input class="inp" type="number" id="setIter" value="3" min="1" max="10"></div>
+    <div class="set-row"><div>${t('set_base')}<p>${t('set_base_d')}</p></div><select class="inp" id="setBase"><option>main</option><option>develop</option></select></div>
+    <div class="set-row"><div>${t('set_model')}</div><select class="inp" id="setModel"><option>sonnet</option><option>opus</option><option>haiku</option></select></div>
+    <div class="set-row"><div>${t('set_auto')}<p>${t('set_auto_d')}</p></div><div class="seg"><button class="on">${t('on')}</button><button>${t('off')}</button></div></div>
+    <div class="set-row"><div>${t('set_path')}<p>${t('set_path_d')}</p></div><input class="inp mono" id="setPath" value="%USERPROFILE%\\.local\\bin\\claude.exe"></div>
+   </div></div>`;
+}
+
+/* ---------- modal ---------- */
+let ntType='feature',ntPrio=2;
+function openModal(){
+  document.getElementById('modalRoot').innerHTML=`<div class="modal" data-mclose><form class="dialog" id="ntForm">
+   <header>${t('nt_title')}</header><div class="body">
+    <div class="field"><label for="ntName">${t('nt_name')}</label><input class="inp" id="ntName" placeholder="${t('nt_ph')}" required></div>
+    <div class="field"><label for="ntDesc">${t('nt_desc')}</label><textarea class="inp" id="ntDesc" placeholder="${t('nt_dph')}"></textarea></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+     <div class="field"><label>${t('nt_type')}</label><div class="seg" id="ntType">${['feature','fix','refactor','breaking'].map(x=>`<button type="button" data-v="${x}" class="${ntType===x?'on':''}">${x}</button>`).join('')}</div></div>
+     <div class="field"><label>${t('nt_prio')}</label><div class="seg" id="ntPrio">${[[1,'low'],[2,'normal'],[3,'high']].map(([v,k])=>`<button type="button" data-v="${v}" class="${ntPrio===v?'on':''}">${t(k)}</button>`).join('')}</div></div></div>
+   </div><footer><button type="button" class="btn ghost" data-mclose>${t('cancel')}</button><button type="submit" class="btn" data-dest="backlog">${t('save_backlog')}</button><button type="submit" class="btn primary" data-dest="queue">${t('save_queue')}</button></footer></form></div>`;
+  setTimeout(()=>document.getElementById('ntName').focus(),0);
+}
+function toast(k){
+  const r=document.getElementById('toastRoot');r.innerHTML=`<div class="toast">${ic('check',2.4)}${t(k)}</div>`;
+  clearTimeout(toast.h);toast.h=setTimeout(()=>r.innerHTML='',2400);
+}
+
+/* ---------- render + events ---------- */
+function render(){
+  document.documentElement.lang=S.lang;
+  renderRail();renderTop();renderStatus();
+  const v=document.getElementById('view');
+  v.innerHTML={home:vHome,board:vBoard,git:vGit,agents:vAgents,project:vProject,settings:vSettings}[S.view]();
+  renderDrawer();
+}
+function applyTheme(m){S.themeMode=m;const r=document.documentElement;if(m==='sys')r.removeAttribute('data-theme');else r.setAttribute('data-theme',m)}
+document.addEventListener('click',e=>{
+  const g=s=>e.target.closest(s);let el;
+  if(el=g('[data-view]')){S.view=el.dataset.view;S.sel=null;render();return}
+  if(el=g('[data-lang]')){S.lang=el.dataset.lang;try{localStorage.setItem('vx_lang',S.lang)}catch(_){}render();return}
+  if(g('#themeBtn')){const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);applyTheme(dark?'light':'dark');render();return}
+  if(el=g('[data-theme-set]')){applyTheme(el.dataset.themeSet);render();return}
+  if(g('#qbtn')){S.queue=!S.queue;render();return}
+  if(g('#newTask')||g('#addInline')){openModal();return}
+  if(el=g('[data-send]')){const x=TASKS.find(z=>z.id===el.dataset.send);x.col='queue';S.sel=null;render();toast('toast_moved');return}
+  if(el=g('[data-open]')){S.sel=el.dataset.open;S.tab=el.dataset.tab||'log';render();return}
+  if(el=g('[data-card]')){const x=TASKS.find(z=>z.id===el.dataset.card);S.sel=x.id;S.tab=x.col==='approval'?'plan':x.col==='review'?'reports':'log';render();return}
+  if(g('[data-close]')){S.sel=null;render();return}
+  if(el=g('[data-tab-btn]')){S.tab=el.dataset.tabBtn;renderDrawer();return}
+  if(el=g('[data-file]')){S.file=+el.dataset.file;renderDrawer();return}
+  if(el=g('[data-bump]')){S.bump=el.dataset.bump;renderDrawer();return}
+  if(el=g('[data-agent]')){S.agent=el.dataset.agent;render();return}
+  if(el=g('[data-toast]')){toast(el.dataset.toast);return}
+  if(el=g('[data-act]')){const x=TASKS.find(z=>z.id===S.sel);const a=el.dataset.act;
+    if(a==='approve'){x.col='progress';x.st=['d','a','','','',''];x.iter=1;x.time='2:14';S.sel=null;render();toast('toast_approved')}
+    else if(a==='accept'){x.col='done';x.ver={patch:'1.4.3',minor:'1.5.0',major:'2.0.0'}[S.bump];S.sel=null;render();toast('toast_merge')}
+    else if(a==='rework'){x.col='progress';x.st=['d','a','','','',''];x.iter=1;S.sel=null;render();toast('toast_rework')}
+    else if(a==='reject'){TASKS=TASKS.filter(z=>z!==x);S.sel=null;render();toast('toast_reject')}
+    else if(a==='retry'){x.col='queue';S.sel=null;render();toast('toast_moved')}
+    else if(a==='stop'){S.queue=false;render()}
+    else if(a==='replan'){S.tab='plan';renderDrawer();document.getElementById('replanTxt')?.focus()}
+    return}
+  const mm=e.target.closest('#ntType button,#ntPrio button');
+  if(mm){const grp=mm.parentElement;[...grp.children].forEach(b=>b.classList.toggle('on',b===mm));if(grp.id==='ntType')ntType=mm.dataset.v;else ntPrio=+mm.dataset.v;return}
+  if(e.target.matches('[data-mclose]')){document.getElementById('modalRoot').innerHTML='';return}
+});
+let submitDest='backlog';
+document.addEventListener('click',e=>{const b=e.target.closest('[data-dest]');if(b)submitDest=b.dataset.dest},true);
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='ntForm')return;e.preventDefault();
+  const n=Math.max(...TASKS.map(x=>+x.id.split('-')[1]))+1;
+  const name=document.getElementById('ntName').value.trim();
+  TASKS.push({id:'VX-'+n,title:{ru:name,en:name},type:ntType,p:ntPrio,col:submitDest});
+  document.getElementById('modalRoot').innerHTML='';S.view='board';render();toast('toast_created');
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('modalRoot').innerHTML)document.getElementById('modalRoot').innerHTML='';else if(S.sel){S.sel=null;render()}}});
+/* drag & drop */
+let dragId=null;
+document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-card]');if(c){dragId=c.dataset.card;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',dragId)}catch(_){}}});
+document.addEventListener('dragover',e=>{const c=e.target.closest('[data-col]');if(c&&dragId){e.preventDefault();document.querySelectorAll('.col.drop').forEach(x=>x!==c&&x.classList.remove('drop'));c.classList.add('drop')}});
+document.addEventListener('drop',e=>{const c=e.target.closest('[data-col]');if(c&&dragId){e.preventDefault();const x=TASKS.find(z=>z.id===dragId);x.col=c.dataset.col;dragId=null;render();toast('toast_moved')}});
+document.addEventListener('dragend',()=>{dragId=null;document.querySelectorAll('.col.drop').forEach(x=>x.classList.remove('drop'))});
+
+render();
+</script>
