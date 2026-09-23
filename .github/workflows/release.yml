@@ -26,16 +26,17 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - name: Build and publish
-        run: npx electron-vite build && npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Release notes from CHANGELOG.md
+      - name: Build installer
+        run: npx electron-vite build && npx electron-builder --win --publish never
+      # One gh call creates the release with every file at once (electron-builder's parallel
+      # uploads race to create the release and fail with 422 already_exists).
+      - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           v="${GITHUB_REF_NAME#v}"
-          awk -v v="$v" '$0 ~ "^## \[" v "\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          awk -v v="$v" 'index($0, "## [" v "]") == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
           cat .github/release-footer.md >> notes.md
-          gh release edit "$GITHUB_REF_NAME" --title "Vexa $v" --notes-file notes.md
+          gh release create "$GITHUB_REF_NAME" --title "Vexa $v" --notes-file notes.md --verify-tag \
+            "dist/Vexa-$v-setup.exe" "dist/Vexa-$v-setup.exe.blockmap" dist/latest.yml
