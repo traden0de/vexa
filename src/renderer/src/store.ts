@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EnvStatus, Project, QueueState, RateLimitInfo, Settings, Task } from '@shared/types'
+import type { EnvStatus, Project, QueueState, RateLimitInfo, Settings, Task, UpdateState } from '@shared/types'
 import { call, on } from './api'
 import i18n from './i18n'
 
@@ -27,6 +27,10 @@ interface State {
   branch: string | null
   toasts: Toast[]
   taskDialog: { open: boolean; edit?: Task }
+  update: UpdateState | null
+  /** Version the user postponed with "Later" in this session. */
+  updateDismissed: string | null
+  dismissUpdate(): void
 
   init(): Promise<void>
   setView(v: View): void
@@ -62,17 +66,24 @@ export const useStore = create<State>((set, get) => ({
   branch: null,
   toasts: [],
   taskDialog: { open: false },
+  update: null,
+  updateDismissed: null,
+
+  dismissUpdate() {
+    set({ updateDismissed: get().update?.version ?? null })
+  },
 
   async init() {
-    const [settings, projects, queue, rateLimit] = await Promise.all([
+    const [settings, projects, queue, rateLimit, update] = await Promise.all([
       call('settings:get'),
       call('projects:list'),
       call('queue:state'),
-      call('ratelimit:get')
+      call('ratelimit:get'),
+      call('update:state')
     ])
     applyTheme(settings.theme)
     void i18n.changeLanguage(settings.lang)
-    set({ settings, projects, queue, rateLimit, ready: true })
+    set({ settings, projects, queue, rateLimit, update, ready: true })
 
     on('task:updated', (t) => {
       if (t.projectId !== get().projectId) return
@@ -90,6 +101,7 @@ export const useStore = create<State>((set, get) => ({
       void get().refreshBranch()
     })
     on('ratelimit', (rateLimit) => set({ rateLimit }))
+    on('update:state', (update) => set({ update }))
 
     const last = projects.find((p) => p.id === settings.lastProjectId)
     if (last) await get().openProject(last)

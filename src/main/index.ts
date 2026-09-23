@@ -6,6 +6,7 @@ import { runClaude } from './claude/runner'
 import { Db } from './db'
 import { registerIpc } from './ipc'
 import { migrateFromVeltrix } from './migrate'
+import { Updater } from './updater'
 import { Orchestrator } from './pipeline/orchestrator'
 import type { IpcEventName, IpcEvents } from '@shared/ipc'
 
@@ -63,9 +64,16 @@ app.whenReady().then(() => {
   const locate = () => locateClaude(db.getSettings().claudePath || undefined)
   const orchestrator = new Orchestrator({ db, agents, run: runClaude, locate, emit })
 
-  registerIpc({ db, agents, orchestrator, locate, getWindow: () => win })
+  const updater = new Updater(
+    (s) => emit('update:state', s),
+    () => orchestrator.getState().activeTaskId != null
+  )
+
+  registerIpc({ db, agents, orchestrator, locate, getWindow: () => win, updater })
   createWindow()
   orchestrator.kick()
+  // Give the window time to load before the first check.
+  if (db.getSettings().autoCheckUpdates) setTimeout(() => void updater.check(), 5000)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

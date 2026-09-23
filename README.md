@@ -33,6 +33,7 @@ Vexa runs the `claude` CLI you already have installed and signed in to (Pro/Max 
 - **Guided tour.** A step-by-step walkthrough on first launch; restart it any time from Settings.
 - **Any project.** Open a folder or clone a repository. The project's `CLAUDE.md`, `.claude/settings.json`, hooks, MCP servers and `.claude/agents` are all picked up by Claude Code as usual. You can also generate `CLAUDE.md` with `/init` from the UI.
 - **Customizable agents.** Edit the prompt, model, effort, permission mode and allowed tools. Changes are saved for all projects or as a per-project override in `.vexa/agents/*.md`.
+- **Automatic updates.** New versions come from GitHub Releases; Vexa offers them on startup and in Settings, and installs on restart.
 - **Subscription-aware.** Shows 5-hour and 7-day usage. When the limit is hit, the queue pauses and resumes automatically after the reset.
 - Russian and English UI; light and dark themes.
 
@@ -88,6 +89,12 @@ VEXA_USER_DATA=/tmp/vx2 node e2e/features.mjs <project> <shots-dir>  # tour, bra
 VEXA_USER_DATA=/tmp/vx3 DISCUSS=1 node e2e/full-cycle.mjs <sandbox> <shots-dir>  # real Claude run
 ```
 
+### Releasing
+
+1. Bump `version` in `package.json` and add a `## [X.Y.Z]` section to `CHANGELOG.md` (Vexa does both when you accept a task in its own repo).
+2. Commit, then `git tag vX.Y.Z && git push --follow-tags`.
+3. The **Release** workflow builds the installer and publishes the GitHub release with `latest.yml`; installed copies offer the update automatically.
+
 Contributions are welcome — see `CLAUDE.md` for the architecture and conventions.
 
 ## License
@@ -116,6 +123,7 @@ Vexa использует уже установленный и авторизо�
 - **Любой проект** с учётом его `CLAUDE.md` и настроек `.claude`.
 - **Редактор агентов.**
 - **Учёт лимитов подписки:** при исчерпании лимита очередь встаёт на паузу и продолжает после сброса.
+- **Автообновления** из GitHub Releases: при запуске и по кнопке в настройках.
 - **Интерфейс** на русском и английском, светлая и тёмная темы.
 
 **Скачать для Windows:** [последний релиз](https://github.com/traden0de/vexa/releases/latest).

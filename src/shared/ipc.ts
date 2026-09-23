@@ -15,6 +15,7 @@ import type {
   Settings,
   Task,
   TaskStatus,
+  UpdateState,
   VersionInfo
 } from './types'
 
@@ -83,6 +84,11 @@ export interface IpcContract {
   'settings:set': (patch: Partial<Settings>) => Settings
 
   'shell:openPath': (path: string) => void
+
+  'update:state': () => UpdateState
+  'update:check': () => UpdateState
+  'update:download': () => UpdateState
+  'update:install': () => void
 }
 
 export type IpcChannel = keyof IpcContract
@@ -94,6 +100,7 @@ export interface IpcEvents {
   'task:event': LogEvent
   'queue:state': QueueState
   'ratelimit': RateLimitInfo
+  'update:state': UpdateState
 }
 
 export type IpcEventName = keyof IpcEvents

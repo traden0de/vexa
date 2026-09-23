@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Compass } from 'lucide-react'
+import { Compass, Download, LoaderCircle, RefreshCw } from 'lucide-react'
+import { call } from '../api'
 import type { Settings } from '@shared/types'
 import { useStore } from '../store'
 import { Seg, Toggle } from '../components/ui'
@@ -22,6 +23,7 @@ export function SettingsView(): ReactNode {
     <div className="page" style={{ maxWidth: 860 }}>
       <h1>{t('set_title')}</h1>
       <p className="sub" />
+      <UpdatesPanel />
       <div className="panel">
         <div className="set-row">
           <div>
@@ -113,6 +115,76 @@ export function SettingsView(): ReactNode {
             }}
           />
         </div>
+      </div>
+    </div>
+  )
+}
+
+function UpdatesPanel(): ReactNode {
+  const { t } = useTranslation()
+  const update = useStore((s) => s.update)
+  const settings = useStore((s) => s.settings)!
+  const updateSettings = useStore((s) => s.updateSettings)
+  const busy = useStore((s) => s.queue.activeTaskId != null)
+  const run = useStore((s) => s.run)
+  if (!update) return null
+
+  const status = (() => {
+    switch (update.status) {
+      case 'unsupported':
+        return t('upd_unsupported')
+      case 'checking':
+        return t('upd_checking')
+      case 'not-available':
+        return t('upd_latest')
+      case 'available':
+        return t('upd_available', { version: update.version })
+      case 'downloading':
+        return t('upd_downloading', { percent: update.percent ?? 0 })
+      case 'downloaded':
+        return t('upd_ready', { version: update.version })
+      case 'error':
+        return `${t('upd_error')}: ${update.error}`
+      default:
+        return ''
+    }
+  })()
+
+  return (
+    <div className="panel" style={{ marginBottom: 16 }}>
+      <div className="set-row">
+        <div>
+          {t('upd_title')} <span className="reftag">v{update.current}</span>
+          <p style={{ color: update.status === 'error' ? 'var(--bad)' : undefined }}>{status}</p>
+        </div>
+        <div className="row">
+          {update.status === 'available' && (
+            <button className="btn primary" onClick={() => run(() => call('update:download'))}>
+              <Download /> {t('upd_download')}
+            </button>
+          )}
+          {update.status === 'downloaded' && (
+            <button className="btn primary" disabled={busy} title={busy ? t('upd_busy') : undefined} onClick={() => run(() => call('update:install'))}>
+              <RefreshCw /> {t('upd_install')}
+            </button>
+          )}
+          {update.status !== 'downloading' && update.status !== 'downloaded' && (
+            <button
+              className="btn"
+              disabled={update.status === 'unsupported' || update.status === 'checking'}
+              onClick={() => run(() => call('update:check'))}
+            >
+              {update.status === 'checking' ? <LoaderCircle className="spin" /> : <RefreshCw />} {t('upd_check')}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="set-row">
+        <div>
+          {t('upd_auto')}
+          <p>{t('upd_auto_d')}</p>
+        </div>
+        <Toggle label={t('upd_auto')} on={settings.autoCheckUpdates} onChange={(autoCheckUpdates) => void updateSettings({ autoCheckUpdates })} />
       </div>
     </div>
   )

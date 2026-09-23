@@ -6,3 +6,4 @@ dist/
 .vexa/cache/
 e2e/shots/
 *.tsbuildinfo
+dist-*/

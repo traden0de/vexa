@@ -352,3 +352,9 @@ textarea.prompt { min-height: 360px; }
 .discussion .qa { padding-top: 10px; font-size: 13px; }
 .discussion .q { color: var(--muted); }
 .discussion .a { margin-top: 2px; overflow-wrap: anywhere; }
+
+/* update banner */
+.update-card { position: fixed; right: 18px; bottom: 40px; z-index: 35; width: min(360px, calc(100% - 32px)); background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.update-card .meter { height: 6px; }
+.update-notes { margin: 0; max-height: 180px; overflow: auto; white-space: pre-wrap; font-family: var(--sans); font-size: 12.5px; color: var(--muted); background: var(--panel2); border-radius: 8px; padding: 8px 10px; }
+.linklike { border: 0; background: none; padding: 0; color: var(--accent-ink); font-size: 12.5px; text-align: left; text-decoration: underline; text-underline-offset: 2px; }

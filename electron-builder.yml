@@ -26,4 +26,8 @@ mac:
 linux:
   target: AppImage
   category: Development
-publish: null
+publish:
+  provider: github
+  owner: traden0de
+  repo: vexa
+  releaseType: release

@@ -206,6 +206,8 @@ export interface Settings {
   claudePath: string
   lastProjectId?: number
   tourSeen: { welcome: boolean; board: boolean }
+  /** Check GitHub Releases for a new version on startup. */
+  autoCheckUpdates: boolean
 }
 
 export interface RateLimitInfo {
@@ -272,4 +274,26 @@ export interface VersionInfo {
   current: string
   files: string[]
   tags: { name: string; date: string }[]
+}
+
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+  /** Running from source: updates only work in the installed app. */
+  | 'unsupported'
+
+export interface UpdateState {
+  status: UpdateStatus
+  current: string
+  version?: string
+  notes?: string
+  /** 0–100 while downloading */
+  percent?: number
+  error?: string
+  checkedAt?: number
 }

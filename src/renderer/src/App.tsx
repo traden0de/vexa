@@ -26,6 +26,7 @@ import { startTour } from './tour'
 import { Board } from './components/Board'
 import { TaskDrawer } from './components/TaskDrawer'
 import { TaskDialog } from './components/TaskDialog'
+import { UpdateBanner } from './components/UpdateBanner'
 import { HomeView } from './views/HomeView'
 import { GitView } from './views/GitView'
 import { AgentsView } from './views/AgentsView'
@@ -74,6 +75,7 @@ export function App(): ReactNode {
       </div>
       <TaskDrawer />
       {taskDialog.open && <TaskDialog />}
+      <UpdateBanner />
       <Toasts />
     </div>
   )

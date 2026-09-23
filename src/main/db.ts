@@ -33,7 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoResume: true,
   waitForReview: true,
   claudePath: '',
-  tourSeen: { welcome: false, board: false }
+  tourSeen: { welcome: false, board: false },
+  autoCheckUpdates: true
 }
 
 export class Db {

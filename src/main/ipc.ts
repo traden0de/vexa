@@ -11,6 +11,7 @@ import { runClaude } from './claude/runner'
 import type { Db } from './db'
 import { GitService } from './git'
 import type { Orchestrator } from './pipeline/orchestrator'
+import type { Updater } from './updater'
 import { commitMessageSchema, toJsonSchema } from './pipeline/schemas'
 import { detectVersion } from './version'
 
@@ -22,6 +23,7 @@ interface Ctx {
   orchestrator: Orchestrator
   locate: () => Promise<ClaudeCommand | null>
   getWindow: () => BrowserWindow | null
+  updater: Updater
 }
 
 type Handler<C extends IpcChannel> = (
@@ -239,6 +241,11 @@ export function registerIpc(ctx: Ctx): void {
     if ('claudePath' in patch) resetClaudeLocation()
     return db.setSettings(patch)
   })
+
+  handle('update:state', () => ctx.updater.getState())
+  handle('update:check', () => ctx.updater.check())
+  handle('update:download', () => ctx.updater.download())
+  handle('update:install', () => ctx.updater.install())
 
   handle('shell:openPath', (path) => {
     void shell.openPath(path)

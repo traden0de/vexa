@@ -1,6 +1,6 @@
 {
   "name": "vexa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Desktop IDE for managing Claude Code agents: task board, plan approval, tests, review, security, versioning and git — all through buttons.",
   "homepage": "https://github.com/traden0de/vexa",
   "repository": {
@@ -19,11 +19,12 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "build:win": "electron-vite build && electron-builder --win",
+    "build:win": "electron-vite build && electron-builder --win --publish never",
     "e2e:smoke": "electron-vite build && node e2e/smoke.mjs",
     "e2e:full": "electron-vite build && node e2e/full-cycle.mjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "semver": "^7.8.5",
     "simple-git": "^3.36.0",
     "yaml": "^2.9.1",

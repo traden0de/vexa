@@ -19,6 +19,7 @@ plan → approval → code → tests → review → security → release → mer
   - `pipeline/orchestrator.ts` — queue + task state machine (the heart of the app); `prompts.ts`, `schemas.ts` (zod → `--json-schema`)
   - `git.ts` (simple-git), `version.ts` (semver + version files + CHANGELOG), `agents.ts` (markdown agent files), `db.ts` (`node:sqlite`)
   - `ipc.ts` — all IPC handlers; the contract lives in `src/shared/ipc.ts`
+- Updates: `src/main/updater.ts` (electron-updater, GitHub provider from `publish` in electron-builder.yml); `.github/workflows/release.yml` publishes on `v*` tags. `node e2e/update-check.mjs <oldExe> <feedDir> <shots>` tests check+download against a local feed (`VEXA_UPDATE_URL`).
 - `src/preload` — `window.vexa` bridge (`invoke` / `on`), contextIsolation on, sandbox on
 - `src/renderer` — React UI, onboarding tour in `tour.ts` (driver.js; targets are `data-tour` attributes), Zustand store (`store.ts`), i18n in `locales/{ru,en}.json`, plain CSS with design tokens in `styles.css`
 - `resources/agents/*.md` — built-in agent definitions (YAML frontmatter + system prompt)
