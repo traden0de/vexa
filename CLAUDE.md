@@ -23,6 +23,7 @@ plan → approval → code → tests → review → security → release → mer
 - `src/preload` — `window.vexa` bridge (`invoke` / `on`), contextIsolation on, sandbox on
 - `src/renderer` — React UI, onboarding tour in `tour.ts` (driver.js; targets are `data-tour` attributes), Zustand store (`store.ts`), i18n in `locales/{ru,en}.json`, plain CSS with design tokens in `styles.css`
 - `resources/agents/*.md` — built-in agent definitions (YAML frontmatter + system prompt)
+- `site/` — landing page, a separate Next.js package (`output: 'export'`, own `package.json`/lockfile); texts in `site/content/{en,ru}.ts`, release data from the GitHub API in `site/lib/release.ts`; build with `cd site && npm run build`
 
 ## Conventions
 - Every IPC channel is declared in `IpcContract` first, then handled in `ipc.ts` and called with `call()` in the renderer.

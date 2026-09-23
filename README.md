@@ -95,6 +95,10 @@ VEXA_USER_DATA=/tmp/vx3 DISCUSS=1 node e2e/full-cycle.mjs <sandbox> <shots-dir> 
 2. Commit, then `git tag vX.Y.Z && git push --follow-tags`.
 3. The **Release** workflow builds the installer and publishes the GitHub release with `latest.yml`; installed copies offer the update automatically.
 
+### Landing page
+
+`site/` is the product website ([vexacode.ru](https://vexacode.ru)): Next.js exported to static HTML for DigitalOcean App Platform. It reads the latest release from GitHub at build time. See [`site/README.md`](site/README.md).
+
 Contributions are welcome — see `CLAUDE.md` for the architecture and conventions.
 
 ## License
