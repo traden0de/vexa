@@ -13,11 +13,11 @@ function taskHeader(t: Task): string {
 
 /**
  * Keeps plans and reports in the user's language (code and commit messages follow the project),
- * and stops agents from touching the version, which Veltrix applies on accept.
+ * and stops agents from touching the version, which Vexa applies on accept.
  */
 const LANGUAGE_RULE =
   'Language: write every human-readable text you produce (plan, summaries, findings, changelog lines) in the same language as the task title and description above.\n' +
-  'Versioning: do not change the project version or CHANGELOG.md and do not treat an unchanged version as a problem — Veltrix bumps the version, writes the changelog and tags the release when the user accepts the task.'
+  'Versioning: do not change the project version or CHANGELOG.md and do not treat an unchanged version as a problem — Vexa bumps the version, writes the changelog and tags the release when the user accepts the task.'
 
 /** How many rounds of questions the planner may ask before it must write the plan. */
 export const MAX_QUESTION_ROUNDS = 3

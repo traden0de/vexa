@@ -5,7 +5,7 @@ import { AGENT_IDS, type AgentDef, type AgentId, type PermissionMode } from '@sh
 
 /**
  * Agents are markdown files with YAML frontmatter. Resolution order (last wins):
- * builtin (resources/agents) → user (userData/agents) → project (<project>/.veltrix/agents).
+ * builtin (resources/agents) → user (userData/agents) → project (<project>/.vexa/agents).
  */
 export class AgentStore {
   constructor(
@@ -22,7 +22,8 @@ export class AgentStore {
       [this.builtinDir, 'builtin'],
       [this.userDir, 'user']
     ]
-    if (projectPath) layers.push([projectDir(projectPath), 'project'])
+    // `.veltrix/agents` is the folder name from before the rename; `.vexa/agents` wins over it.
+    if (projectPath) layers.push([join(projectPath, '.veltrix', 'agents'), 'project'], [projectDir(projectPath), 'project'])
     let def: AgentDef | undefined
     for (const [dir, source] of layers) {
       const file = join(dir, `${id}.md`)
@@ -49,7 +50,7 @@ export class AgentStore {
 }
 
 function projectDir(projectPath: string): string {
-  return join(projectPath, '.veltrix', 'agents')
+  return join(projectPath, '.vexa', 'agents')
 }
 
 function requirePath(p?: string): string {

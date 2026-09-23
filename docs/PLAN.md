@@ -1,4 +1,4 @@
-# Veltrix — desktop IDE for managing Claude Code agents
+# Vexa — desktop IDE for managing Claude Code agents
 
 ## Status (2026-09-23)
 Stages 1–8 are implemented and verified:
@@ -8,7 +8,7 @@ Stages 1–8 are implemented and verified:
 
 Deviations from the plan:
 - **Styling:** plain CSS with design tokens, taken directly from the approved prototype, instead of Tailwind/shadcn. The result is the same look with fewer dependencies.
-- **Versioning:** the version and CHANGELOG are applied by Veltrix on **Accept**, not by the release agent in the branch. Tasks that are merged one after another therefore never conflict on version files. The release agent only proposes the bump and the changelog lines.
+- **Versioning:** the version and CHANGELOG are applied by Vexa on **Accept**, not by the release agent in the branch. Tasks that are merged one after another therefore never conflict on version files. The release agent only proposes the bump and the changelog lines.
 - **Reports:** agent reports use `claude --json-schema` structured output. The CLI supports it, so the text-parsing fallback is rarely needed.
 
 ## Context
@@ -21,7 +21,7 @@ What you chose: **approve the plan** (the agent writes a plan, you approve it wi
 ## Stack
 - **Electron + electron-vite + TypeScript**: Node-only, so no Rust. Later builds for macOS/Linux come from the same code.
 - **React 19 + Tailwind v4 + shadcn/ui (Radix)**: a clean dark/light UI. **dnd-kit** for the kanban board, **Monaco DiffEditor** for diffs, **Zustand** for state, **i18next** for RU/EN.
-- **Storage:** `node:sqlite` (built into Node, no native build) in `userData/veltrix.db`, holding tasks, runs, event logs and settings.
+- **Storage:** `node:sqlite` (built into Node, no native build) in `userData/vexa.db`, holding tasks, runs, event logs and settings.
 - **Git:** `simple-git`, a wrapper around the system git.
 - **Versions:** `semver`, plus version-file adapters: package.json, pyproject.toml, Cargo.toml, *.csproj, VERSION.
 - **Packaging:** electron-builder (NSIS installer for Windows). GitHub Actions CI for lint, typecheck, tests and the build.
@@ -57,7 +57,7 @@ claude -p --output-format stream-json --verbose --include-partial-messages
 ## Task pipeline (one queue per project, strictly sequential)
 Board columns: **Backlog → Queue → Planning → Plan approval → In progress → Ready for review → Done / Failed**.
 
-1. **Pre-flight:** check that `claude`/git exist and that the working tree is clean. If it isn't, the app offers the buttons "Commit", "Stash" and "Cancel". It then creates the branch `veltrix/<id>-<slug>` from the base branch.
+1. **Pre-flight:** check that `claude`/git exist and that the working tree is clean. If it isn't, the app offers the buttons "Commit", "Stash" and "Cancel". It then creates the branch `vexa/<id>-<slug>` from the base branch.
 2. **Planner** (`--permission-mode plan`, read-only) writes the plan. The card moves to "Plan approval", where you can **Approve**, **Edit the plan** or **Re-plan with a comment**.
 3. **Developer** (`acceptEdits`, Bash/Edit/Write) implements the approved plan and commits.
 4. **Tester** writes or updates tests and runs them. It finds the test command from CLAUDE.md, package.json, pytest and similar files, and the result is JSON `{passed, failures[]}`.
@@ -72,7 +72,7 @@ Board columns: **Backlog → Queue → Planning → Plan approval → In progres
    - **Push** is a separate button in the Git panel.
 
 ## Built-in agents
-Every agent is a markdown file with frontmatter (name, role, model, permissionMode, allowedTools, output schema) and a prompt. The defaults live in `resources/agents/`. You can edit them in the UI ("Agents" screen), and per-project overrides go in `<project>/.veltrix/agents/*.md`. The project's own `.claude/agents` stay available to Claude as they are.
+Every agent is a markdown file with frontmatter (name, role, model, permissionMode, allowedTools, output schema) and a prompt. The defaults live in `resources/agents/`. You can edit them in the UI ("Agents" screen), and per-project overrides go in `<project>/.vexa/agents/*.md`. The project's own `.claude/agents` stay available to Claude as they are.
 Agents: planner, developer, tester, reviewer, security, release.
 
 ## UI screens

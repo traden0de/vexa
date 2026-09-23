@@ -58,7 +58,7 @@ export const runClaude: Runner = (cmd, opts) =>
   new Promise((resolve, reject) => {
     const child = spawn(cmd.command, [...cmd.prefix, ...buildArgs(opts)], {
       cwd: opts.cwd,
-      env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'veltrix' },
+      env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'vexa' },
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
     })

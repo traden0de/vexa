@@ -222,7 +222,7 @@ export class GitService {
   }
 
   async stash(): Promise<void> {
-    await this.git.stash(['push', '-u', '-m', 'veltrix: stash'])
+    await this.git.stash(['push', '-u', '-m', 'vexa: stash'])
   }
 
   async stashPop(): Promise<void> {

@@ -32,7 +32,7 @@ export function HomeView(): ReactNode {
   return (
     <div className="page">
       <div className="hero-home">
-        <span className="wm">Veltrix</span>
+        <span className="wm">Vexa</span>
         <p>{t('home_sub')}</p>
       </div>
       <div className="row" style={{ marginBottom: 24 }}>

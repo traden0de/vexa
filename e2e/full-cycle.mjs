@@ -1,5 +1,5 @@
 // End-to-end run against the real `claude` CLI: drives the UI through one task's full cycle.
-// Usage: VELTRIX_USER_DATA=<tmp> [DISCUSS=1] node e2e/full-cycle.mjs <projectPath> <shotsDir>
+// Usage: VEXA_USER_DATA=<tmp> [DISCUSS=1] node e2e/full-cycle.mjs <projectPath> <shotsDir>
 // DISCUSS=1 ticks “Discuss before planning”, sets a custom branch and answers the planner's questions via the UI.
 import { _electron as electron } from 'playwright-core'
 import { mkdirSync } from 'node:fs'
@@ -14,7 +14,7 @@ const win = await app.firstWindow()
 win.on('pageerror', (e) => log('[pageerror]', e.message))
 await win.setViewportSize({ width: 1440, height: 900 })
 await win.waitForSelector('.rail')
-const invoke = (ch, ...args) => win.evaluate(([c, a]) => window.veltrix.invoke(c, ...a), [ch, args])
+const invoke = (ch, ...args) => win.evaluate(([c, a]) => window.vexa.invoke(c, ...a), [ch, args])
 const shot = (name) => win.screenshot({ path: join(outDir, name + '.png') })
 
 const DISCUSS = !!process.env.DISCUSS

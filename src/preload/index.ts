@@ -10,4 +10,4 @@ const bridge: PreloadBridge = {
   }
 }
 
-contextBridge.exposeInMainWorld('veltrix', bridge)
+contextBridge.exposeInMainWorld('vexa', bridge)

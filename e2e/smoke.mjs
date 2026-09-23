@@ -7,7 +7,7 @@ const project = process.argv[2]
 const outDir = process.argv[3] ?? 'e2e/shots'
 mkdirSync(outDir, { recursive: true })
 
-const app = await electron.launch({ args: ['.'], env: { ...process.env, VELTRIX_E2E: '1' } })
+const app = await electron.launch({ args: ['.'], env: { ...process.env, VEXA_E2E: '1' } })
 const win = await app.firstWindow()
 win.on('console', (m) => m.type() === 'error' && console.log('[renderer error]', m.text()))
 win.on('pageerror', (e) => console.log('[pageerror]', e.message))
@@ -17,7 +17,7 @@ await win.waitForTimeout(1500)
 await win.screenshot({ path: join(outDir, '01-start.png') })
 
 if (project) {
-  await win.evaluate((p) => window.veltrix.invoke('projects:open', p), project)
+  await win.evaluate((p) => window.vexa.invoke('projects:open', p), project)
   await win.reload()
   await win.waitForSelector('.board')
   await win.waitForTimeout(800)

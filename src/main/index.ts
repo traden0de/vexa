@@ -5,11 +5,12 @@ import { locateClaude } from './claude/locate'
 import { runClaude } from './claude/runner'
 import { Db } from './db'
 import { registerIpc } from './ipc'
+import { migrateFromVeltrix } from './migrate'
 import { Orchestrator } from './pipeline/orchestrator'
 import type { IpcEventName, IpcEvents } from '@shared/ipc'
 
 // Lets tests and multiple dev instances use an isolated data folder.
-if (process.env.VELTRIX_USER_DATA) app.setPath('userData', process.env.VELTRIX_USER_DATA)
+if (process.env.VEXA_USER_DATA) app.setPath('userData', process.env.VEXA_USER_DATA)
 
 let win: BrowserWindow | null = null
 
@@ -25,7 +26,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     backgroundColor: '#0e1116',
-    title: 'Veltrix',
+    title: 'Vexa',
     autoHideMenuBar: true,
     // Packaged builds take the icon from the exe; in dev use the source PNG.
     ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'build', 'icon.png') }),
@@ -51,9 +52,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  app.setAppUserModelId('dev.veltrix.app')
+  app.setAppUserModelId('dev.vexa.app')
   const userData = app.getPath('userData')
-  const db = new Db(join(userData, 'veltrix.db'))
+  if (!process.env.VEXA_USER_DATA) migrateFromVeltrix(app.getPath('appData'), userData)
+  const db = new Db(join(userData, 'vexa.db'))
   const builtinAgents = app.isPackaged
     ? join(process.resourcesPath, 'agents')
     : join(app.getAppPath(), 'resources', 'agents')

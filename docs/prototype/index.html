@@ -1,4 +1,4 @@
-<title>Veltrix Prototype</title>
+<title>Vexa Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap">
@@ -346,13 +346,13 @@ ru:{
   bump_title:'Поднятие версии',bump_hint:'Агент релиза предложил MINOR: новая функциональность без breaking changes. Можно изменить.',
   patch_d:'Исправления',minor_d:'Новая функциональность',major_d:'Несовместимые изменения',changelog:'Запись в CHANGELOG.md',
   branch:'ветка',base:'в',
-  home_title:'Veltrix',home_sub:'IDE для управления ИИ-агентами. Откройте проект — Veltrix учтёт его CLAUDE.md, агенты и настройки .claude.',
+  home_title:'Vexa',home_sub:'IDE для управления ИИ-агентами. Откройте проект — Vexa учтёт его CLAUDE.md, агенты и настройки .claude.',
   open_folder:'Открыть папку',clone:'Клонировать репозиторий',recent:'Недавние проекты',env:'Окружение',
   env_claude:'Claude Code найден',env_login:'Вход выполнен · подписка Pro',env_git:'Git установлен',env_node:'Node.js для тестов проекта',
   tasks_n:'задач',updated:'обновлён',
   git_changes:'Изменения в рабочей копии',git_commit:'Сообщение коммита',git_gen:'Сгенерировать сообщение',commit:'Закоммитить',
   git_branches:'Ветки',git_history:'История',pull:'Pull',push:'Push',fetch:'Fetch',stash:'Stash',checkout:'Переключиться',
-  ag_title:'Агенты',ag_sub:'Предустановленные агенты полного цикла. Можно менять промпт, модель и доступные инструменты; переопределения проекта хранятся в .veltrix/agents.',
+  ag_title:'Агенты',ag_sub:'Предустановленные агенты полного цикла. Можно менять промпт, модель и доступные инструменты; переопределения проекта хранятся в .vexa/agents.',
   model:'Модель',perm:'Режим разрешений',tools_l:'Инструменты',prompt_l:'Системный промпт',save:'Сохранить',reset:'Сбросить к стандарту',
   a_planner:'Планировщик',a_developer:'Разработчик',a_tester:'Тестировщик',a_reviewer:'Ревьюер',a_security:'Аудитор безопасности',a_release:'Релиз-менеджер',
   ad_planner:'Изучает код и пишет план',ad_developer:'Реализует утверждённый план',ad_tester:'Пишет и запускает тесты',ad_reviewer:'Проверяет качество кода',ad_security:'Ищет уязвимости и секреты',ad_release:'Версия, CHANGELOG, коммит',
@@ -387,13 +387,13 @@ en:{
   bump_title:'Version bump',bump_hint:'The release agent suggests MINOR: new functionality, no breaking changes. You can override it.',
   patch_d:'Bug fixes',minor_d:'New functionality',major_d:'Breaking changes',changelog:'CHANGELOG.md entry',
   branch:'branch',base:'into',
-  home_title:'Veltrix',home_sub:'An IDE for managing AI agents. Open a project — Veltrix respects its CLAUDE.md, agents and .claude settings.',
+  home_title:'Vexa',home_sub:'An IDE for managing AI agents. Open a project — Vexa respects its CLAUDE.md, agents and .claude settings.',
   open_folder:'Open folder',clone:'Clone repository',recent:'Recent projects',env:'Environment',
   env_claude:'Claude Code found',env_login:'Signed in · Pro subscription',env_git:'Git installed',env_node:'Node.js for project tests',
   tasks_n:'tasks',updated:'updated',
   git_changes:'Working tree changes',git_commit:'Commit message',git_gen:'Generate message',commit:'Commit',
   git_branches:'Branches',git_history:'History',pull:'Pull',push:'Push',fetch:'Fetch',stash:'Stash',checkout:'Checkout',
-  ag_title:'Agents',ag_sub:'Built-in agents for the full cycle. Change the prompt, model and allowed tools; project overrides live in .veltrix/agents.',
+  ag_title:'Agents',ag_sub:'Built-in agents for the full cycle. Change the prompt, model and allowed tools; project overrides live in .vexa/agents.',
   model:'Model',perm:'Permission mode',tools_l:'Tools',prompt_l:'System prompt',save:'Save',reset:'Reset to default',
   a_planner:'Planner',a_developer:'Developer',a_tester:'Tester',a_reviewer:'Reviewer',a_security:'Security auditor',a_release:'Release manager',
   ad_planner:'Explores the code and writes a plan',ad_developer:'Implements the approved plan',ad_tester:'Writes and runs tests',ad_reviewer:'Checks code quality',ad_security:'Hunts vulnerabilities and secrets',ad_release:'Version, CHANGELOG, commit',
@@ -449,7 +449,7 @@ function renderTop(){
   const dark=document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
   document.getElementById('topbar').innerHTML=`
    <button class="proj" data-view="home">${ic('folder')} shop-api <small>D:\\Projects\\shop-api</small></button>
-   <span class="chip">${ic('branch')} veltrix/VX-14-github-oauth</span>
+   <span class="chip">${ic('branch')} vexa/VX-14-github-oauth</span>
    <span class="chip">${ic('tag')} v1.4.2</span>
    <div class="grow"></div>
    <div class="queue"><span class="dot ${S.queue?'live':''}"></span>${S.queue?t('queue_running'):t('queue_paused')}
@@ -590,7 +590,7 @@ function renderDrawer(){
   else if(x.col==='backlog')foot=`<button class="btn primary" data-send="${x.id}">${ic('play')}${t('send')}</button>`;
   root.innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-label="${L(x.title)}">
    <div class="dr-h"><div class="row"><span class="mono" style="color:var(--faint);font-size:12px">${x.id}</span><span class="tag t-${x.type}">${x.type}</span>
-     <span class="chip">${ic('branch')} veltrix/${x.id}-${x.type} ${t('base')} main</span>${x.iter?`<span class="chip">${t('iter')} ${x.iter}/3</span>`:''}<span class="grow"></span><button class="btn ghost" data-close aria-label="Close">${ic('x')}</button></div>
+     <span class="chip">${ic('branch')} vexa/${x.id}-${x.type} ${t('base')} main</span>${x.iter?`<span class="chip">${t('iter')} ${x.iter}/3</span>`:''}<span class="grow"></span><button class="btn ghost" data-close aria-label="Close">${ic('x')}</button></div>
      <h2>${L(x.title)}</h2>
      <div class="stepper">${STAGES.map((s,i)=>`<div class="step ${st[i]}"><div class="bar"></div><b><span class="ag" style="background:${AG[STAGE_AG[s]][0]}"></span>${t('s_'+s)}</b></div>`).join('')}</div></div>
    <div class="tabs" role="tablist">${tabs.map(([k,c])=>`<button role="tab" class="${S.tab===k?'on':''}" data-tab-btn="${k}">${t('tab_'+k)}${c?`<span class="cnt">${c}</span>`:''}</button>`).join('')}</div>
@@ -609,9 +609,9 @@ function renderDrawer(){
 
 /* ---------- other views ---------- */
 function vHome(){
-  const rec=[['shop-api','D:\\Projects\\shop-api','v1.4.2',13,'Node · TypeScript'],['veltrix','D:\\Programming\\veltrix','v0.1.0',4,'Electron · React'],['ml-pipeline','D:\\Work\\ml-pipeline','v3.2.0',9,'Python'],['landing','D:\\Projects\\landing','v0.9.1',2,'Astro']];
+  const rec=[['shop-api','D:\\Projects\\shop-api','v1.4.2',13,'Node · TypeScript'],['vexa','D:\\Programming\\veltrix','v0.1.0',4,'Electron · React'],['ml-pipeline','D:\\Work\\ml-pipeline','v3.2.0',9,'Python'],['landing','D:\\Projects\\landing','v0.9.1',2,'Astro']];
   const env=[['env_claude','claude 2.1.280'],['env_login','claude auth · Pro'],['env_git','git 2.55.0'],['env_node','node 24.18.0']];
-  return `<div class="page"><div class="hero-home"><span class="wm">Veltrix</span><p>${t('home_sub')}</p></div>
+  return `<div class="page"><div class="hero-home"><span class="wm">Vexa</span><p>${t('home_sub')}</p></div>
    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"><button class="btn primary">${ic('folder')}${t('open_folder')}</button><button class="btn">${ic('down')}${t('clone')}</button></div>
    <div class="grid2" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
     <div><div class="label" style="margin-bottom:10px">${t('recent')}</div><div class="recent">${rec.map(r=>`<button class="pcard" data-view="board"><b>${r[0]}</b><span class="path">${r[1]}</span><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="reftag">${r[2]}</span><span class="chip">${r[3]} ${t('tasks_n')}</span><span class="chip">${r[4]}</span></div></button>`).join('')}</div></div>
@@ -620,9 +620,9 @@ function vHome(){
 }
 function vGit(){
   const ch=[['M','src/ws/client.ts'],['M','src/ws/heartbeat.ts'],['?','notes/todo.md']];
-  const br=[['main','',true],['veltrix/VX-14-github-oauth','↑3',false],['veltrix/VX-12-csv-export','↑5',false],['veltrix/VX-13-postgres17','↑9',false]];
-  const lg=[['a1f93c2',{ru:'feat(auth): обмен кода GitHub на токен',en:'feat(auth): exchange GitHub code for token'},'veltrix',0,'VX-14'],['9be01d4',{ru:'test(auth): CSRF state истёк',en:'test(auth): expired CSRF state'},'veltrix',0,''],['4c7a211',{ru:'Merge VX-10: падение при пустом email',en:'Merge VX-10: crash on empty email'},'you',1,'v1.4.2'],['e02bb90',{ru:'chore(release): v1.4.2',en:'chore(release): v1.4.2'},'veltrix',0,''],['77d31aa',{ru:'fix(users): проверка пустого email',en:'fix(users): validate empty email'},'veltrix',0,''],['3f0c9e8',{ru:'Merge VX-9: обновление зависимостей',en:'Merge VX-9: update dependencies'},'you',1,'v1.4.1']];
-  return `<div class="page"><h1>Git</h1><p class="sub">shop-api · main ← veltrix/VX-14-github-oauth</p>
+  const br=[['main','',true],['vexa/VX-14-github-oauth','↑3',false],['vexa/VX-12-csv-export','↑5',false],['vexa/VX-13-postgres17','↑9',false]];
+  const lg=[['a1f93c2',{ru:'feat(auth): обмен кода GitHub на токен',en:'feat(auth): exchange GitHub code for token'},'vexa',0,'VX-14'],['9be01d4',{ru:'test(auth): CSRF state истёк',en:'test(auth): expired CSRF state'},'vexa',0,''],['4c7a211',{ru:'Merge VX-10: падение при пустом email',en:'Merge VX-10: crash on empty email'},'you',1,'v1.4.2'],['e02bb90',{ru:'chore(release): v1.4.2',en:'chore(release): v1.4.2'},'vexa',0,''],['77d31aa',{ru:'fix(users): проверка пустого email',en:'fix(users): validate empty email'},'vexa',0,''],['3f0c9e8',{ru:'Merge VX-9: обновление зависимостей',en:'Merge VX-9: update dependencies'},'you',1,'v1.4.1']];
+  return `<div class="page"><h1>Git</h1><p class="sub">shop-api · main ← vexa/VX-14-github-oauth</p>
    <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap"><button class="btn">${ic('down')}${t('pull')}</button><button class="btn">${ic('up')}${t('push')} <span class="chip" style="padding:0 6px">2</span></button><button class="btn">${ic('redo')}${t('fetch')}</button><button class="btn">${t('stash')}</button></div>
    <div class="grid2">
     <div class="panel"><h3>${t('git_changes')} <span class="chip">3</span></h3><div class="list">${ch.map(c=>`<div class="li"><input type="checkbox" checked aria-label="${c[1]}"><span class="mono" style="color:${c[0]==='M'?'var(--warn)':'var(--faint)'};width:12px">${c[0]}</span><span class="mono" style="font-size:12.5px">${c[1]}</span></div>`).join('')}</div>
@@ -676,7 +676,7 @@ REST API for the shop. Node 24, TypeScript, Express, Postgres.
    </div></div>`;
 }
 function vSettings(){
-  return `<div class="page" style="max-width:820px"><h1>${t('set_title')}</h1><p class="sub">%APPDATA%\\Veltrix\\veltrix.db</p>
+  return `<div class="page" style="max-width:820px"><h1>${t('set_title')}</h1><p class="sub">%APPDATA%\\Vexa\\vexa.db</p>
    <div class="panel">
     <div class="set-row"><div>${t('lang')}</div><div class="seg"><button data-lang="ru" class="${S.lang==='ru'?'on':''}">Русский</button><button data-lang="en" class="${S.lang==='en'?'on':''}">English</button></div></div>
     <div class="set-row"><div>${t('theme')}</div><div class="seg">${['sys','light','dark'].map(m=>`<button data-theme-set="${m}" class="${S.themeMode===m?'on':''}">${t('theme_'+(m==='sys'?'sys':m))}</button>`).join('')}</div></div>

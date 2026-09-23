@@ -1,5 +1,5 @@
 // UI checks for the onboarding tour, scrolling, branch management and the task dialog.
-// Usage: VELTRIX_USER_DATA=<fresh tmp dir> node e2e/features.mjs <projectPath> <shotsDir>
+// Usage: VEXA_USER_DATA=<fresh tmp dir> node e2e/features.mjs <projectPath> <shotsDir>
 import { _electron as electron } from 'playwright-core'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,7 +16,7 @@ const win = await app.firstWindow()
 win.on('pageerror', (e) => console.log('[pageerror]', e.message))
 await win.setViewportSize({ width: 1440, height: 900 })
 await win.waitForSelector('.rail')
-const invoke = (ch, ...args) => win.evaluate(([c, a]) => window.veltrix.invoke(c, ...a), [ch, args])
+const invoke = (ch, ...args) => win.evaluate(([c, a]) => window.vexa.invoke(c, ...a), [ch, args])
 const shot = (name) => win.screenshot({ path: join(outDir, name + '.png') })
 
 // 1. Welcome tour on first launch

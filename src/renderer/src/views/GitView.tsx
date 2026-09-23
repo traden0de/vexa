@@ -24,7 +24,7 @@ export function GitView(): ReactNode {
   const [newBranch, setNewBranch] = useState(false)
   const [deleting, setDeleting] = useState<{ name: string; force: boolean } | null>(null)
   const tasks = useStore((s) => s.tasks)
-  // Branches of tasks still in the pipeline are managed by Veltrix, not deleted by hand.
+  // Branches of tasks still in the pipeline are managed by Vexa, not deleted by hand.
   const taskBranches = new Set(
     Object.values(tasks)
       .filter((x) => x.branch && x.status !== 'done' && x.status !== 'backlog')

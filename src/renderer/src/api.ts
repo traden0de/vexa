@@ -6,7 +6,7 @@ export async function call<C extends IpcChannel>(
   ...args: Parameters<IpcContract[C]>
 ): Promise<Awaited<ReturnType<IpcContract[C]>>> {
   try {
-    return (await window.veltrix.invoke(channel, ...args)) as Awaited<ReturnType<IpcContract[C]>>
+    return (await window.vexa.invoke(channel, ...args)) as Awaited<ReturnType<IpcContract[C]>>
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     throw new Error(msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
@@ -14,5 +14,5 @@ export async function call<C extends IpcChannel>(
 }
 
 export function on<E extends IpcEventName>(event: E, cb: (payload: IpcEvents[E]) => void): () => void {
-  return window.veltrix.on(event, cb)
+  return window.vexa.on(event, cb)
 }

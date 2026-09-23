@@ -20,5 +20,5 @@ export function slugify(s: string): string {
 }
 
 export function autoBranchName(seq: number, title: string): string {
-  return `veltrix/${seq}-${slugify(title)}`
+  return `vexa/${seq}-${slugify(title)}`
 }

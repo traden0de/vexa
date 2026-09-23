@@ -338,7 +338,8 @@ export class Orchestrator {
   }
 
   private async pickBase(git: GitService, current: string): Promise<string> {
-    if (!current.startsWith('veltrix/') && current !== 'HEAD') return current
+    // Task branches never serve as a base; `veltrix/` is the prefix from before the rename.
+    if (!/^(vexa|veltrix)\//.test(current) && current !== 'HEAD') return current
     for (const b of ['main', 'master', 'develop']) if (await git.branchExists(b)) return b
     return current
   }
@@ -705,7 +706,7 @@ export class Orchestrator {
       t.activeStage = undefined
       t.status = 'failed'
       t.errorKind = 'stopped'
-      t.error = 'Interrupted: Veltrix was closed while the task was running'
+      t.error = 'Interrupted: Vexa was closed while the task was running'
       this.save(t)
     }
   }

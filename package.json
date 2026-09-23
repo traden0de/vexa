@@ -1,9 +1,9 @@
 {
-  "name": "veltrix",
+  "name": "vexa",
   "version": "0.1.0",
   "description": "Desktop IDE for managing Claude Code agents: task board, plan approval, tests, review, security, versioning and git — all through buttons.",
   "main": "./out/main/index.js",
-  "author": "Veltrix contributors",
+  "author": "Vexa contributors",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",

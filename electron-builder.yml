@@ -1,5 +1,5 @@
-appId: dev.veltrix.app
-productName: Veltrix
+appId: dev.vexa.app
+productName: Vexa
 directories:
   buildResources: build
   output: dist

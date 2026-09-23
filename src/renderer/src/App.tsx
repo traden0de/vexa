@@ -92,7 +92,7 @@ function Rail({ view }: { view: View }): ReactNode {
   ]
   return (
     <nav className="rail" data-tour="rail">
-      <img className="logo" src={appIcon} alt="Veltrix" />
+      <img className="logo" src={appIcon} alt="Vexa" />
       {items.map(([v, icon]) => (
         <button
           key={v}
@@ -149,7 +149,7 @@ function Topbar(): ReactNode {
           <Folder /> {project.name} <small>{project.path}</small>
         </button>
       ) : (
-        <span className="proj">Veltrix</span>
+        <span className="proj">Vexa</span>
       )}
       {branch && (
         <span className="chip">

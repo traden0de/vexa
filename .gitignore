@@ -3,6 +3,6 @@ out/
 dist/
 *.log
 .DS_Store
-.veltrix/cache/
+.vexa/cache/
 e2e/shots/
 *.tsbuildinfo
