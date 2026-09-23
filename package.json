@@ -2,6 +2,14 @@
   "name": "vexa",
   "version": "0.1.0",
   "description": "Desktop IDE for managing Claude Code agents: task board, plan approval, tests, review, security, versioning and git — all through buttons.",
+  "homepage": "https://github.com/traden0de/vexa",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/traden0de/vexa.git"
+  },
+  "bugs": {
+    "url": "https://github.com/traden0de/vexa/issues"
+  },
   "main": "./out/main/index.js",
   "author": "Vexa contributors",
   "license": "MIT",

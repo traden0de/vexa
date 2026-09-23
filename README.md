@@ -4,6 +4,8 @@
 
 Vexa runs the `claude` CLI you already have installed and signed in to (Pro/Max subscription). No API keys.
 
+**[⬇ Download for Windows](https://github.com/traden0de/vexa/releases/latest)**
+
 > Русская версия — ниже.
 
 ## Features
@@ -115,6 +117,8 @@ Vexa использует уже установленный и авторизо�
 - **Редактор агентов.**
 - **Учёт лимитов подписки:** при исчерпании лимита очередь встаёт на паузу и продолжает после сброса.
 - **Интерфейс** на русском и английском, светлая и тёмная темы.
+
+**Скачать для Windows:** [последний релиз](https://github.com/traden0de/vexa/releases/latest).
 
 **Запуск из исходников:** `npm install && npm run dev`.
 
