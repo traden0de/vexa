@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-26
+
+### Added
+- Images in tasks: attach any number of screenshots or photos with a button, Ctrl+V or drag and drop; agents open them while planning and implementing. Images live in the app data folder, never in the repository.
+- "Resolve conflict" for a merge conflict on accept: Vexa merges the base branch into the task branch, the developer fixes the conflicting files and the checks run again.
+- "Waiting for you" everywhere: counters on the Board and Projects icons and on project cards, a "Waiting for you" bar on the board with one-click chips, highlighted cards with an action button, and the board scrolls to them.
+- Desktop notifications when a task needs you while Vexa is in the background, and a counter on the taskbar button (toggle in Settings).
+- The top bar is now the window title bar, colored to the theme and dimmed with the page.
+
+### Changed
+- The accept button shows where the task is merged: "Accept & merge into main".
+- A merge conflict is shown once, on the task card, in the interface language.
+
+### Fixed
+- Two tasks waiting for review no longer propose the same version: the release stage reads the version from the base branch, and accepting one task moves the others to the next version.
+- `npm run dev` showed an empty window when the dev server listened on IPv6 only.
+
 ## [0.2.0] - 2026-09-23
 
 ### Added

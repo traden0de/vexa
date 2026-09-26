@@ -1,10 +1,10 @@
-import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
+import { dialog, ipcMain, nativeImage, shell, type BrowserWindow } from 'electron'
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { IpcChannel, IpcContract } from '@shared/ipc'
-import type { EnvStatus, Project } from '@shared/types'
+import { attentionKind, type EnvStatus, type Project } from '@shared/types'
 import type { AgentStore } from './agents'
 import { claudeAuth, claudeVersion, resetClaudeLocation, type ClaudeCommand } from './claude/locate'
 import { runClaude } from './claude/runner'
@@ -16,6 +16,9 @@ import { commitMessageSchema, toJsonSchema } from './pipeline/schemas'
 import { detectVersion } from './version'
 
 const exec = promisify(execFile)
+
+/** Height of the window-buttons strip; matches `.topbar` in styles.css. */
+export const TITLE_BAR_HEIGHT = 56
 
 interface Ctx {
   db: Db
@@ -116,6 +119,9 @@ export function registerIpc(ctx: Ctx): void {
   handle('tasks:replan', (id, comment) => orch.replan(id, comment))
   handle('tasks:accept', (id, bump) => orch.accept(id, bump))
   handle('tasks:rework', (id, comment) => orch.rework(id, comment))
+  handle('tasks:resolveConflict', (id) => orch.resolveConflict(id))
+  handle('tasks:images', (id) => orch.taskImages(id))
+  handle('tasks:attention', () => db.listTasks().filter((t) => attentionKind(t) !== null))
   handle('tasks:reject', (id) => orch.reject(id))
   handle('tasks:retry', (id) => orch.retry(id))
   handle('tasks:stop', (id) => orch.stop(id))
@@ -137,6 +143,28 @@ export function registerIpc(ctx: Ctx): void {
     if (!r) return { original: '', modified: '' }
     const base = await r.g.mergeBase(r.base, r.head)
     return { original: await r.g.show(base, file), modified: await r.g.show(r.head, file) }
+  })
+
+  // ---- window
+  let badge = 0
+  handle('window:focus', () => {
+    const w = ctx.getWindow()
+    if (!w) return
+    if (w.isMinimized()) w.restore()
+    w.show()
+    w.focus()
+  })
+  handle('window:titleBar', (color, symbolColor) => {
+    const w = ctx.getWindow()
+    if (!w || process.platform === 'darwin') return
+    w.setTitleBarOverlay({ color, symbolColor, height: TITLE_BAR_HEIGHT })
+  })
+  handle('window:badge', (count, png) => {
+    const w = ctx.getWindow()
+    if (!w) return
+    w.setOverlayIcon(count > 0 && png ? nativeImage.createFromDataURL(png) : null, count > 0 ? String(count) : '')
+    if (count > badge && !w.isFocused()) w.flashFrame(true)
+    badge = count
   })
 
   // ---- queue

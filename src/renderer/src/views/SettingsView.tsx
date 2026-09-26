@@ -92,6 +92,13 @@ export function SettingsView(): ReactNode {
         </div>
         <div className="set-row">
           <div>
+            {t('set_notifications')}
+            <p>{t('set_notifications_d')}</p>
+          </div>
+          <Toggle label={t('set_notifications')} on={settings.notifications} onChange={(notifications) => set({ notifications })} />
+        </div>
+        <div className="set-row">
+          <div>
             {t('set_auto')}
             <p>{t('set_auto_d')}</p>
           </div>

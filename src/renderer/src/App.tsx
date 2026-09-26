@@ -85,6 +85,14 @@ function Rail({ view }: { view: View }): ReactNode {
   const { t } = useTranslation()
   const setView = useStore((s) => s.setView)
   const hasProject = useStore((s) => s.projectId != null)
+  const projectId = useStore((s) => s.projectId)
+  const attention = useStore((s) => s.attention)
+  const waiting = Object.values(attention)
+  // The board counts the open project, home counts all the others.
+  const badges: Partial<Record<View, number>> = {
+    board: view === 'board' ? 0 : waiting.filter((x) => x.projectId === projectId).length,
+    home: view === 'home' ? 0 : waiting.filter((x) => x.projectId !== projectId).length
+  }
   const items: [View, ReactNode][] = [
     ['home', <House key="h" />],
     ['board', <KanbanSquare key="b" />],
@@ -105,6 +113,7 @@ function Rail({ view }: { view: View }): ReactNode {
           data-tour={`nav-${v}`}
         >
           {icon}
+          {!!badges[v] && <span className="rail-badge">{badges[v]! > 99 ? '99+' : badges[v]}</span>}
           <span className="tip">{t(`nav_${v}`)}</span>
         </button>
       ))}

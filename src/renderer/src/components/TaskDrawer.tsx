@@ -5,6 +5,7 @@ import {
   ChevronRight,
   GitBranch,
   GitMerge,
+  GitPullRequestArrow,
   Info,
   MessageCircleQuestion,
   Send,
@@ -21,6 +22,7 @@ import {
 import { STAGES, STAGE_AGENT, type Bump, type DiffFile, type LogEvent, type PlanQuestion, type Task } from '@shared/types'
 import { call, on } from '../api'
 import { useStore, type DrawerTab } from '../store'
+import { Thumbs, type DraftImage } from './Images'
 import { AGENT_COLORS, AskDialog, Markdown, TypeTag, formatCost, formatDuration } from './ui'
 
 const DiffView = lazy(() => import('./DiffView').then((m) => ({ default: m.DiffView })))
@@ -37,6 +39,7 @@ export function TaskDrawer(): ReactNode {
   const openTaskDialog = useStore((s) => s.openTaskDialog)
   const queue = useStore((s) => s.queue)
   const run = useStore((s) => s.run)
+  const toast = useStore((s) => s.toast)
   const [ask, setAsk] = useState<Ask>(null)
   const [bump, setBump] = useState<Bump>('patch')
   const [planDraft, setPlanDraft] = useState<string | null>(null)
@@ -168,19 +171,29 @@ export function TaskDrawer(): ReactNode {
       </>
     )
   } else if (task.status === 'review') {
+    const base = task.baseBranch ?? 'main'
     footer = (
       <>
+        {task.errorKind === 'conflict' && (
+          <button className="btn primary" onClick={() => act(() => call('tasks:resolveConflict', task.id), t('toast_resolve'))}>
+            <GitPullRequestArrow /> {t('resolve_conflict')}
+          </button>
+        )}
         <button
+          title={`${task.branch} → ${base}`}
           className="btn ok"
           onClick={() =>
             act(async () => {
+              const tag = `v${nextOf(task, bump)}`
               const done = await call('tasks:accept', task.id, bump)
+              // A conflict stays on the card together with the "Resolve conflict" button.
+              if (done.errorKind === 'conflict') return
               close()
-              return done
-            }, t('toast_merged', { tag: `v${nextOf(task, bump)}` }))
+              toast(t('toast_merged', { tag }))
+            })
           }
         >
-          <GitMerge /> {t('accept')} · v{nextOf(task, bump)}
+          <GitMerge /> {t('accept_into', { base })} · v{nextOf(task, bump)}
         </button>
         <button className="btn" onClick={() => setAsk('rework')}>
           <RotateCcw /> {t('rework')}
@@ -277,7 +290,13 @@ export function TaskDrawer(): ReactNode {
               </div>
             ))}
           </div>
-          {task.error && <div className="error-box">{task.error}</div>}
+          {task.error && (
+            <div className="error-box">
+              {task.errorKind === 'conflict'
+                ? t('err_conflict', { base: task.baseBranch ?? 'main', files: conflictFiles(task) })
+                : task.error}
+            </div>
+          )}
         </div>
         <div className="tabs" role="tablist">
           {tabs.map((x) => (
@@ -347,6 +366,12 @@ export function TaskDrawer(): ReactNode {
   )
 }
 
+/** Conflicted files; tasks from older versions only have them inside the error text. */
+function conflictFiles(task: Task): string {
+  if (task.conflicts?.length) return task.conflicts.join(', ')
+  return task.error?.match(/^Merge conflict with [^:]+: (.+?)\. (?:Use|Press) /)?.[1] ?? '—'
+}
+
 function nextOf(task: Task, bump: Bump): string {
   const [maj, min, pat] = (task.currentVersion ?? '0.0.0').split('.').map((x) => parseInt(x, 10) || 0)
   if (bump === 'major') return `${maj + 1}.0.0`
@@ -358,7 +383,21 @@ function nextOf(task: Task, bump: Bump): string {
 
 function DetailsTab({ task }: { task: Task }): ReactNode {
   const { t } = useTranslation()
-  return task.description.trim() ? <Markdown text={task.description} /> : <p className="faint">{t('nt_dph')}</p>
+  const [images, setImages] = useState<DraftImage[]>([])
+  useEffect(() => {
+    if (!task.images?.length) return setImages([])
+    let alive = true
+    call('tasks:images', task.id).then((list) => alive && setImages(list.map((x) => ({ name: x.name, src: x.dataUrl }))))
+    return () => {
+      alive = false
+    }
+  }, [task.id, task.images?.join()])
+  return (
+    <>
+      {task.description.trim() ? <Markdown text={task.description} /> : !images.length && <p className="faint">{t('nt_dph')}</p>}
+      <Thumbs images={images} />
+    </>
+  )
 }
 
 function LogTab({ task, live }: { task: Task; live: boolean }): ReactNode {

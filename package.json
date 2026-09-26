@@ -1,6 +1,6 @@
 {
   "name": "vexa",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Desktop IDE for managing Claude Code agents: task board, plan approval, tests, review, security, versioning and git — all through buttons.",
   "homepage": "https://github.com/traden0de/vexa",
   "repository": {

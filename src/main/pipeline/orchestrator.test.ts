@@ -107,7 +107,8 @@ describe('Orchestrator', () => {
       agents,
       run: fakeRunner(script, calls),
       locate: async () => ({ command: 'claude', prefix: [], path: 'claude' }),
-      emit: () => {}
+      emit: () => {},
+      attachments: mkdtempSync(join(tmpdir(), 'vx-att-'))
     })
 
   const settle = async (o: Orchestrator): Promise<void> => {
@@ -297,6 +298,69 @@ describe('Orchestrator', () => {
     expect(git(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('feature/sum')
     // Rejecting keeps the chosen name for the next attempt.
     expect((await o.reject(t.id)).branch).toBe('feature/sum')
+  })
+
+  it('bumps waiting tasks after an accept and resolves a merge conflict', async () => {
+    db.setSettings({ waitForReview: false })
+    const calls: { agent: Agent; opts: RunOptions }[] = []
+    const o = make({}, calls)
+    const a = await newTask(o)
+    const b = await newTask(o, { title: 'Other sum' })
+    await settle(o)
+    o.approvePlan(a.id)
+    o.approvePlan(b.id)
+    await settle(o)
+    expect(db.getTask(a.id)!.version).toBe('1.1.0')
+    expect(db.getTask(b.id)!.version).toBe('1.1.0')
+
+    await o.accept(a.id, 'minor')
+    let tb = db.getTask(b.id)!
+    expect(tb.currentVersion).toBe('1.1.0')
+    expect(tb.version).toBe('1.2.0')
+
+    // Both tasks created sum.js: merging the second one conflicts.
+    const conflicted = await o.accept(b.id, 'minor')
+    expect(conflicted.status).toBe('review')
+    expect(conflicted.errorKind).toBe('conflict')
+    expect(conflicted.conflicts).toContain('sum.js')
+    expect(git(repo, 'status', '--porcelain')).toBe('')
+
+    o.resolveConflict(b.id)
+    await settle(o)
+    tb = db.getTask(b.id)!
+    expect(tb.error).toBeUndefined()
+    expect(tb.status).toBe('review')
+    expect(tb.syncBase).toBeUndefined()
+    const dev = calls.filter((c) => c.agent === 'developer').at(-1)!.opts
+    expect(dev.prompt).toContain('## Merge conflicts')
+    expect(dev.prompt).toContain('- sum.js')
+    expect(git(repo, 'log', '-3', '--pretty=%s', tb.branch!)).toContain(`Merge main into ${tb.branch}`)
+
+    tb = await o.accept(b.id, 'minor')
+    expect(tb.status).toBe('done')
+    expect(git(repo, 'tag', '-l', 'v1.2.0')).toBe('v1.2.0')
+  })
+
+  it('stores attached images and hands them to the agents', async () => {
+    const calls: { agent: Agent; opts: RunOptions }[] = []
+    const o = make({}, calls)
+    const png = 'data:image/png;base64,' + Buffer.from('fake-png').toString('base64')
+    const t = await newTask(o, { images: [{ name: 'shot.png', data: png }] })
+    expect(t.images).toEqual(['image-1.png'])
+    await settle(o)
+    const plan = calls[0].opts
+    expect(plan.addDirs).toHaveLength(1)
+    expect(plan.prompt).toContain('## Attached images')
+    expect(plan.prompt).toContain(join(plan.addDirs![0], 'image-1.png'))
+    expect(o.taskImages(t.id)).toEqual([{ name: 'image-1.png', dataUrl: png }])
+
+    // Keep the first, add a second; unsupported types are refused.
+    const updated = await o.updateTask(t.id, { images: [{ name: 'image-1.png' }, { name: 'b.jpg', data: 'data:image/jpeg;base64,AAAA' }] })
+    expect(updated.images).toEqual(['image-1.png', 'image-2.jpg'])
+    await expect(o.updateTask(t.id, { images: [{ name: 'x.svg', data: 'data:image/svg+xml;base64,AA==' }] })).rejects.toThrow(/Unsupported/)
+    const removed = await o.updateTask(t.id, { images: [{ name: 'image-2.jpg' }] })
+    expect(removed.images).toEqual(['image-2.jpg'])
+    expect(existsSync(join(plan.addDirs![0], 'image-1.png'))).toBe(false)
   })
 
   it('creates a branch without switching to it', async () => {

@@ -115,6 +115,36 @@ export class GitService {
     }
   }
 
+  /**
+   * Merges `branch` into the current branch and keeps a conflicted merge in place
+   * so someone can resolve it. Returns the conflicted files (empty on a clean merge).
+   */
+  async mergeKeepConflicts(branch: string, message: string): Promise<string[]> {
+    try {
+      await this.git.merge(['--no-ff', '-m', message, branch])
+      return []
+    } catch (e) {
+      const files = await this.conflictedFiles()
+      if (!files.length) throw e
+      return files
+    }
+  }
+
+  /** True while a merge is in progress (MERGE_HEAD exists). */
+  async isMerging(): Promise<boolean> {
+    try {
+      await this.git.revparse(['-q', '--verify', 'MERGE_HEAD'])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async conflictedFiles(): Promise<string[]> {
+    const raw = await this.git.raw(['diff', '--name-only', '--diff-filter=U'])
+    return raw.split('\n').map((s) => s.trim()).filter(Boolean)
+  }
+
   async tag(name: string, message: string): Promise<void> {
     await this.git.addAnnotatedTag(name, message)
   }

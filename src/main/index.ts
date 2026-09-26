@@ -1,10 +1,10 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { AgentStore } from './agents'
 import { locateClaude } from './claude/locate'
 import { runClaude } from './claude/runner'
 import { Db } from './db'
-import { registerIpc } from './ipc'
+import { registerIpc, TITLE_BAR_HEIGHT } from './ipc'
 import { migrateFromVeltrix } from './migrate'
 import { Updater } from './updater'
 import { Orchestrator } from './pipeline/orchestrator'
@@ -29,6 +29,16 @@ function createWindow(): void {
     backgroundColor: '#0e1116',
     title: 'Vexa',
     autoHideMenuBar: true,
+    // The app's top bar doubles as the title bar; Windows keeps its own window buttons on the right.
+    // The renderer recolors them to the current theme through `window:titleBar`.
+    ...(process.platform === 'darwin'
+      ? {}
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: nativeTheme.shouldUseDarkColors
+            ? { color: '#151920', symbolColor: '#9199a8', height: TITLE_BAR_HEIGHT }
+            : { color: '#ffffff', symbolColor: '#5b6372', height: TITLE_BAR_HEIGHT }
+        }),
     // Packaged builds take the icon from the exe; in dev use the source PNG.
     ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'build', 'icon.png') }),
     webPreferences: {
@@ -39,6 +49,7 @@ function createWindow(): void {
     }
   })
   win.on('ready-to-show', () => win?.show())
+  win.on('focus', () => win?.flashFrame(false))
   // External links open in the system browser, never inside the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url)
@@ -62,7 +73,7 @@ app.whenReady().then(() => {
     : join(app.getAppPath(), 'resources', 'agents')
   const agents = new AgentStore(builtinAgents, join(userData, 'agents'))
   const locate = () => locateClaude(db.getSettings().claudePath || undefined)
-  const orchestrator = new Orchestrator({ db, agents, run: runClaude, locate, emit })
+  const orchestrator = new Orchestrator({ db, agents, run: runClaude, locate, emit, attachments: join(userData, 'attachments') })
 
   const updater = new Updater(
     (s) => emit('update:state', s),

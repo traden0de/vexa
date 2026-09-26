@@ -1,9 +1,12 @@
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { z } from 'zod'
 import type { IpcEventName, IpcEvents } from '@shared/ipc'
 import {
   STAGES,
   type AgentId,
   type Bump,
+  type ImageInput,
   type LogEvent,
   type NewTaskInput,
   type Project,
@@ -13,6 +16,7 @@ import {
   type StageId,
   type StageState,
   type Task,
+  type TaskImage,
   type TaskStatus
 } from '@shared/types'
 import type { AgentStore } from '../agents'
@@ -22,7 +26,7 @@ import type { Runner } from '../claude/runner'
 import type { Db } from '../db'
 import { autoBranchName } from '@shared/slug'
 import { GitService } from '../git'
-import { applyVersion, detectVersion, nextVersion, writeChangelog } from '../version'
+import { applyVersion, detectVersion, nextVersion, versionFileNames, writeChangelog } from '../version'
 import * as P from './prompts'
 import {
   planSchema,
@@ -34,7 +38,9 @@ import {
   type ZodSchema
 } from './schemas'
 
-export type TaskPatch = Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>>
+export type TaskPatch = Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>> & {
+  images?: ImageInput[]
+}
 
 export interface OrchestratorDeps {
   db: Db
@@ -43,6 +49,8 @@ export interface OrchestratorDeps {
   locate: () => Promise<ClaudeCommand | null>
   emit: <E extends IpcEventName>(event: E, payload: IpcEvents[E]) => void
   git?: (cwd: string) => GitService
+  /** Folder for attached images, one subfolder per task. */
+  attachments?: string
 }
 
 class StoppedError extends Error {}
@@ -62,6 +70,8 @@ class TaskError extends Error {
 
 const COMMIT_PREFIX: Record<Task['type'], string> = { feature: 'feat', fix: 'fix', refactor: 'refactor', breaking: 'feat!' }
 const LIMIT_FALLBACK_MS = 30 * 60 * 1000
+const IMAGE_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024
 
 function emptyStages(): Record<StageId, StageState> {
   return { plan: '', code: '', tests: '', review: '', security: '', release: '' }
@@ -233,7 +243,9 @@ export class Orchestrator {
 
     const current = await git.currentBranch()
     task.branch ??= autoBranchName(task.seq, task.title)
-    if (!(await git.isClean())) {
+    // A conflicted merge from "Resolve conflict" stays in place until the developer commits it.
+    const merging = current === task.branch && (await git.isMerging())
+    if (!merging && !(await git.isClean())) {
       if (current === task.branch) await git.commitAll(`wip: ${task.title} (#${task.seq})`)
       else
         throw new TaskError(
@@ -256,9 +268,20 @@ export class Orchestrator {
     task.stages.plan = 'done'
     this.save(task)
 
+    let conflicts: string[] | undefined
+    if (task.syncBase) {
+      conflicts = merging ? await git.conflictedFiles() : await git.mergeKeepConflicts(base, `Merge ${base} into ${task.branch}`)
+      this.log(task, {
+        kind: 'sys',
+        text: conflicts.length
+          ? `Merged ${base} into ${task.branch}; conflicts: ${conflicts.join(', ')}`
+          : `Merged ${base} into ${task.branch} without conflicts`
+      })
+    }
+
     const max = Math.max(1, this.settings().maxIterations)
     const rework = task.reworkComment
-    let findings = rework ? '' : this.collectFindings(task)
+    let findings = rework || task.syncBase ? '' : this.collectFindings(task)
     let ok = false
 
     for (let i = 1; i <= max; i++) {
@@ -266,14 +289,22 @@ export class Orchestrator {
       for (const s of ['code', 'tests', 'review', 'security', 'release'] as StageId[]) task.stages[s] = ''
       this.log(task, { kind: 'sys', text: `Iteration ${i}/${max}` })
 
-      // Developer
+      // Developer (skipped when the base merged in cleanly and nothing else was asked)
       this.setStage(task, 'code', 'active')
-      const devPrompt =
-        !task.sessions.developer
-          ? P.developPrompt(task, base)
-          : P.fixPrompt(findings || 'Continue: make sure the approved plan is fully implemented.', i === 1 ? rework : undefined)
-      await this.runAgent(task, project, 'developer', devPrompt, undefined, true)
-      await git.commitAll(`${COMMIT_PREFIX[task.type]}: ${task.title} (#${task.seq})`)
+      const conflictNote = i === 1 && conflicts?.length ? P.conflictNote(base, conflicts) : undefined
+      if (!(i === 1 && conflicts && !conflicts.length && !rework)) {
+        const devPrompt = !task.sessions.developer
+          ? [P.developPrompt(task, base), conflictNote].filter(Boolean).join('\n\n')
+          : P.fixPrompt(
+              findings || (conflictNote ? '' : 'Continue: make sure the approved plan is fully implemented.'),
+              i === 1 ? rework : undefined,
+              conflictNote
+            )
+        await this.runAgent(task, project, 'developer', devPrompt, undefined, true)
+        const mergeMsg = (await git.isMerging()) ? `Merge ${base} into ${task.branch}` : undefined
+        await git.commitAll(mergeMsg ?? `${COMMIT_PREFIX[task.type]}: ${task.title} (#${task.seq})`)
+      }
+      if (task.syncBase) task.syncBase = undefined
       this.setStage(task, 'code', 'done')
 
       // Tester
@@ -322,7 +353,7 @@ export class Orchestrator {
     // Release (proposal only; applied on accept)
     this.setStage(task, 'release', 'active')
     const stat = await git.diffStat(base, task.branch)
-    const cur = detectVersion(project.path).version
+    const cur = await this.baseVersion(git, project.path, base)
     const rel = (await this.runAgent(task, project, 'release', P.releasePrompt(task, base, stat, cur), releaseSchema, false)).data
     if (task.type === 'breaking' && rel.bump !== 'major') rel.bump = 'major'
     task.reports.release = rel
@@ -335,6 +366,16 @@ export class Orchestrator {
     task.status = 'review'
     this.save(task)
     this.log(task, { kind: 'sys', text: `Ready for review. Proposed version ${cur} → ${task.version} (${rel.bump}).` })
+  }
+
+  /** Version on the base branch: the task branch keeps the one it was created with. */
+  private async baseVersion(git: GitService, root: string, base: string): Promise<string> {
+    const files = new Map<string, string>()
+    for (const f of versionFileNames(root)) {
+      const c = await git.show(base, f)
+      if (c) files.set(f, c)
+    }
+    return detectVersion(root, (f) => files.get(f) ?? null).version
   }
 
   private async pickBase(git: GitService, current: string): Promise<string> {
@@ -371,10 +412,14 @@ export class Orchestrator {
     const model = def.model || this.settings().defaultModel || undefined
     this.log(task, { kind: 'sys', agent: agentId, text: `▶ ${def.name}${model ? ` · ${model}` : ''}` })
 
+    const images = this.imagePaths(task)
+    if (images.length && !(resume && task.sessions[agentId])) prompt += '\n\n' + P.imagesSection(images)
+
     const signal = this.abort?.signal
     const res = await this.d.run(cmd, {
       cwd: project.path,
       prompt,
+      addDirs: images.length ? [this.imageDir(task.id)] : undefined,
       model,
       effort: def.effort,
       permissionMode: def.permissionMode,
@@ -461,6 +506,10 @@ export class Orchestrator {
       createdAt: now,
       updatedAt: now
     })
+    if (input.images?.length) {
+      t.images = this.storeImages(t, input.images)
+      this.d.db.saveTask(t)
+    }
     this.d.emit('task:updated', t)
     if (t.status === 'queue') this.kick()
     return t
@@ -468,7 +517,8 @@ export class Orchestrator {
 
   async updateTask(id: number, patch: TaskPatch): Promise<Task> {
     const t = this.mustTask(id)
-    const { branch, ...rest } = patch
+    const { branch, images, ...rest } = patch
+    if (images) t.images = this.storeImages(t, images)
     if (branch !== undefined) {
       const name = branch.trim()
       if (name !== (t.branchCustom ? t.branch : '')) {
@@ -536,6 +586,7 @@ export class Orchestrator {
     const t = this.mustTask(id)
     this.assertIdle(t)
     this.d.db.deleteTask(id)
+    if (this.d.attachments) rmSync(this.imageDir(id), { recursive: true, force: true })
     this.d.emit('task:removed', { id, projectId: t.projectId })
   }
 
@@ -578,6 +629,20 @@ export class Orchestrator {
     t.error = t.errorKind = undefined
     this.save(t)
     this.log(t, { kind: 'sys', text: `Rework requested: ${comment}` })
+    this.kick()
+    return t
+  }
+
+  resolveConflict(id: number): Task {
+    const t = this.mustTask(id)
+    if (t.status !== 'review' || t.errorKind !== 'conflict') throw new Error('The task has no merge conflict')
+    t.syncBase = true
+    t.planApproved = true
+    t.status = 'queue'
+    t.order = 0
+    t.error = t.errorKind = t.conflicts = undefined
+    this.save(t)
+    this.log(t, { kind: 'sys', text: `Conflict resolution requested: ${t.baseBranch ?? 'main'} will be merged into ${t.branch}` })
     this.kick()
     return t
   }
@@ -655,10 +720,12 @@ export class Orchestrator {
     const merge = await git.mergeNoFf(t.branch, `Merge #${t.seq}: ${t.title}`)
     if (!merge.ok) {
       t.errorKind = 'conflict'
-      t.error = `Merge conflict with ${base}${merge.conflicts.length ? `: ${merge.conflicts.join(', ')}` : ''}. Use "Request rework" so the developer merges ${base} into the branch.`
+      t.conflicts = merge.conflicts
+      t.error = `Merge conflict with ${base}${merge.conflicts.length ? `: ${merge.conflicts.join(', ')}` : ''}. Press "Resolve conflict": ${base} is merged into the task branch, the developer fixes the conflicts and the checks run again.`
       this.save(t)
       this.log(t, { kind: 'error', text: t.error })
-      throw new Error(t.error)
+      // Not thrown: the task card shows the conflict and offers "Resolve conflict".
+      return t
     }
 
     t.mergeCommit = (await git.git.revparse(['HEAD'])).trim()
@@ -690,11 +757,72 @@ export class Orchestrator {
     t.bump = bump
     t.currentVersion = cur
     t.version = next
-    t.error = t.errorKind = undefined
+    t.error = t.errorKind = t.conflicts = undefined
     this.save(t)
     this.log(t, { kind: 'sys', text: `Merged into ${base}, released ${tag}` })
+    // Other tasks waiting for review now release on top of the new version.
+    for (const o of this.d.db.listTasks(t.projectId)) {
+      if (o.id === t.id || o.status !== 'review' || !o.currentVersion) continue
+      o.currentVersion = next
+      o.version = nextVersion(next, o.bump ?? 'patch')
+      this.save(o)
+    }
     this.kick()
     return t
+  }
+
+  // ---------------------------------------------------------------- images
+
+  taskImages(id: number): TaskImage[] {
+    const t = this.mustTask(id)
+    if (!this.d.attachments) return []
+    const out: TaskImage[] = []
+    for (const name of t.images ?? []) {
+      try {
+        const ext = name.split('.').pop()
+        const mime = Object.keys(IMAGE_TYPES).find((m) => IMAGE_TYPES[m] === ext) ?? 'image/png'
+        out.push({ name, dataUrl: `data:${mime};base64,${readFileSync(join(this.imageDir(id), name)).toString('base64')}` })
+      } catch {
+        // removed outside Vexa
+      }
+    }
+    return out
+  }
+
+  private imageDir(taskId: number): string {
+    if (!this.d.attachments) throw new Error('Image attachments are not available')
+    return join(this.d.attachments, String(taskId))
+  }
+
+  private imagePaths(task: Task): string[] {
+    if (!task.images?.length || !this.d.attachments) return []
+    return task.images.map((n) => join(this.imageDir(task.id), n))
+  }
+
+  /** Writes new images, keeps the listed existing ones and deletes the rest. Returns the stored names in order. */
+  private storeImages(task: Task, inputs: ImageInput[]): string[] {
+    const dir = this.imageDir(task.id)
+    const existing = new Set(task.images ?? [])
+    const names: string[] = []
+    mkdirSync(dir, { recursive: true })
+    for (const img of inputs) {
+      if (!img.data) {
+        if (existing.has(img.name)) names.push(img.name)
+        continue
+      }
+      const m = /^data:(image\/[a-z+]+);base64,(.+)$/s.exec(img.data)
+      const ext = m ? IMAGE_TYPES[m[1]] : undefined
+      if (!m || !ext) throw new Error(`Unsupported image format: ${img.name}`)
+      const bytes = Buffer.from(m[2], 'base64')
+      if (bytes.length > MAX_IMAGE_BYTES) throw new Error(`The image is larger than 20 MB: ${img.name}`)
+      let n = 1
+      while ([...existing, ...names].some((x) => x.startsWith(`image-${n}.`))) n++
+      const name = `image-${n}.${ext}`
+      writeFileSync(join(dir, name), bytes)
+      names.push(name)
+    }
+    for (const f of readdirSync(dir)) if (!names.includes(f)) rmSync(join(dir, f), { force: true })
+    return names
   }
 
   // ---------------------------------------------------------------- helpers

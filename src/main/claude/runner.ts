@@ -14,6 +14,8 @@ export interface RunOptions {
   appendSystemPrompt?: string
   resume?: string
   jsonSchema?: string
+  /** Extra directories the agent may read (attached images). */
+  addDirs?: string[]
   signal?: AbortSignal
   onEvent?: (e: StreamEvent) => void
 }
@@ -50,6 +52,7 @@ export function buildArgs(opts: RunOptions): string[] {
   if (opts.appendSystemPrompt) args.push('--append-system-prompt', opts.appendSystemPrompt)
   if (opts.resume) args.push('--resume', opts.resume)
   if (opts.jsonSchema) args.push('--json-schema', opts.jsonSchema)
+  if (opts.addDirs?.length) args.push('--add-dir', ...opts.addDirs)
   return args
 }
 

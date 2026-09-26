@@ -67,12 +67,30 @@ export function developPrompt(t: Task, base: string): string {
   ].join('\n\n')
 }
 
-export function fixPrompt(findings: string, reworkComment?: string): string {
+export function fixPrompt(findings: string, reworkComment?: string, conflictNote?: string): string {
   const parts: string[] = []
+  if (conflictNote) parts.push(conflictNote)
   if (reworkComment) parts.push('## Rework requested by the user', reworkComment)
   if (findings) parts.push('## Findings to fix', findings)
   parts.push('Fix all of the above on the current branch and commit.')
   return parts.join('\n\n')
+}
+
+export function conflictNote(base: string, files: string[]): string {
+  return [
+    '## Merge conflicts',
+    `\`${base}\` has been merged into this branch and the merge stopped on conflicts in:`,
+    files.map((f) => `- ${f}`).join('\n'),
+    `Resolve every conflict so that both the changes from \`${base}\` and this task keep working, remove all conflict markers, then \`git add\` the files and commit to finish the merge.`
+  ].join('\n\n')
+}
+
+export function imagesSection(paths: string[]): string {
+  return [
+    '## Attached images',
+    'The user attached these images to the task (screenshots, mockups, photos). Open each one with the Read tool before you start:',
+    paths.map((p) => `- ${p}`).join('\n')
+  ].join('\n\n')
 }
 
 export function testPrompt(t: Task, base: string): string {

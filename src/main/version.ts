@@ -97,14 +97,29 @@ export interface DetectedVersion {
   files: string[]
 }
 
-/** Finds the current version and every file that stores it. Falls back to 0.0.0. */
-export function detectVersion(root: string): DetectedVersion {
+/** Files that may store the version, relative to the project root. */
+export function versionFileNames(root: string): string[] {
+  return adapters(root).map((a) => a.file)
+}
+
+const readFromDisk =
+  (root: string) =>
+  (file: string): string | null => {
+    const p = join(root, file)
+    return existsSync(p) ? readFileSync(p, 'utf8') : null
+  }
+
+/**
+ * Finds the current version and every file that stores it. Falls back to 0.0.0.
+ * `read` lets callers look at another branch instead of the working tree.
+ */
+export function detectVersion(root: string, read: (file: string) => string | null = readFromDisk(root)): DetectedVersion {
   let version: string | null = null
   const files: string[] = []
   for (const a of adapters(root)) {
-    const p = join(root, a.file)
-    if (!existsSync(p)) continue
-    const v = a.read(readFileSync(p, 'utf8'))
+    const content = read(a.file)
+    if (content == null) continue
+    const v = a.read(content)
     if (v && semver.valid(v)) {
       version ??= v
       files.push(a.file)

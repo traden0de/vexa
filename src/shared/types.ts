@@ -129,6 +129,12 @@ export interface Task {
   questionRounds?: number
   replanComment?: string
   reworkComment?: string
+  /** Attached image file names (stored in the app data folder, not in the project). */
+  images?: string[]
+  /** Merge the base branch into the task branch before the next run (resolves an accept conflict). */
+  syncBase?: boolean
+  /** Files that conflicted on the last accept. */
+  conflicts?: string[]
   branch?: string
   /** The branch name was typed by the user (kept on reject). */
   branchCustom?: boolean
@@ -154,6 +160,17 @@ export interface Task {
   startedAt?: number
 }
 
+/** Why a task waits for the user, or null when it does not. */
+export type AttentionKind = 'questions' | 'approval' | 'review' | 'conflict' | 'failed'
+
+export function attentionKind(t: Task): AttentionKind | null {
+  if (t.status === 'approval') return t.questions?.length ? 'questions' : 'approval'
+  if (t.status === 'review') return t.errorKind === 'conflict' ? 'conflict' : 'review'
+  // A task the user stopped is not news to them.
+  if (t.status === 'failed' && t.errorKind !== 'stopped') return 'failed'
+  return null
+}
+
 export interface NewTaskInput {
   projectId: number
   title: string
@@ -164,6 +181,18 @@ export interface NewTaskInput {
   discuss: boolean
   /** Custom branch name; generated when empty. */
   branch?: string
+  images?: ImageInput[]
+}
+
+/** An attached image: a new one carries its data URL, a kept one only its stored name. */
+export interface ImageInput {
+  name: string
+  data?: string
+}
+
+export interface TaskImage {
+  name: string
+  dataUrl: string
 }
 
 export type LogKind = 'sys' | 'text' | 'tool' | 'tool_result' | 'error' | 'result'
@@ -208,6 +237,8 @@ export interface Settings {
   tourSeen: { welcome: boolean; board: boolean }
   /** Check GitHub Releases for a new version on startup. */
   autoCheckUpdates: boolean
+  /** Desktop notifications when a task needs the user and the window is in the background. */
+  notifications: boolean
 }
 
 export interface RateLimitInfo {

@@ -34,7 +34,8 @@ export const DEFAULT_SETTINGS: Settings = {
   waitForReview: true,
   claudePath: '',
   tourSeen: { welcome: false, board: false },
-  autoCheckUpdates: true
+  autoCheckUpdates: true,
+  notifications: true
 }
 
 export class Db {

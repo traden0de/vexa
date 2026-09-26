@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import type { EnvStatus, Project, QueueState, RateLimitInfo, Settings, Task, UpdateState } from '@shared/types'
+import { attentionKind, type EnvStatus, type Project, type QueueState, type RateLimitInfo, type Settings, type Task, type UpdateState } from '@shared/types'
 import { call, on } from './api'
 import i18n from './i18n'
+import { notifyTask, updateBadge } from './notify'
 
 export type View = 'home' | 'board' | 'git' | 'agents' | 'project' | 'settings'
 export type DrawerTab = 'log' | 'plan' | 'changes' | 'reports' | 'release' | 'details'
@@ -19,6 +20,8 @@ interface State {
   projects: Project[]
   projectId: number | null
   tasks: Record<number, Task>
+  /** Tasks waiting for the user in every project, by id. */
+  attention: Record<number, Task>
   view: View
   selectedTaskId: number | null
   drawerTab: DrawerTab
@@ -40,6 +43,8 @@ interface State {
   refreshBranch(): Promise<void>
   checkEnv(): Promise<void>
   selectTask(id: number | null, tab?: DrawerTab): void
+  /** Opens the task's project (if needed) and its card. */
+  openTask(t: Task): Promise<void>
   setDrawerTab(tab: DrawerTab): void
   updateSettings(patch: Partial<Settings>): Promise<void>
   toast(text: string, error?: boolean): void
@@ -58,6 +63,7 @@ export const useStore = create<State>((set, get) => ({
   projects: [],
   projectId: null,
   tasks: {},
+  attention: {},
   view: 'home',
   selectedTaskId: null,
   drawerTab: 'log',
@@ -74,18 +80,38 @@ export const useStore = create<State>((set, get) => ({
   },
 
   async init() {
-    const [settings, projects, queue, rateLimit, update] = await Promise.all([
+    const [settings, projects, queue, rateLimit, update, waiting] = await Promise.all([
       call('settings:get'),
       call('projects:list'),
       call('queue:state'),
       call('ratelimit:get'),
-      call('update:state')
+      call('update:state'),
+      call('tasks:attention')
     ])
     applyTheme(settings.theme)
     void i18n.changeLanguage(settings.lang)
-    set({ settings, projects, queue, rateLimit, update, ready: true })
+    const attention = Object.fromEntries(waiting.map((t) => [t.id, t]))
+    set({ settings, projects, queue, rateLimit, update, attention, ready: true })
+    updateBadge(waiting.length)
+    useStore.subscribe((s, prev) => {
+      if (s.attention !== prev.attention) updateBadge(Object.keys(s.attention).length)
+    })
 
     on('task:updated', (t) => {
+      const prev = get().attention[t.id]
+      const kind = attentionKind(t)
+      if (kind || prev)
+        set((s) => {
+          const attention = { ...s.attention }
+          if (kind) attention[t.id] = t
+          else delete attention[t.id]
+          return { attention }
+        })
+      // Notify only about news, and only when the user is not looking at the window.
+      if (kind && (!prev || attentionKind(prev) !== kind) && get().settings?.notifications && !document.hasFocus()) {
+        const project = get().projects.find((p) => p.id === t.projectId)
+        notifyTask(t, kind, project?.name, () => void get().openTask(t))
+      }
       if (t.projectId !== get().projectId) return
       set((s) => ({ tasks: { ...s.tasks, [t.id]: t } }))
     })
@@ -93,7 +119,9 @@ export const useStore = create<State>((set, get) => ({
       set((s) => {
         const tasks = { ...s.tasks }
         delete tasks[id]
-        return { tasks, selectedTaskId: s.selectedTaskId === id ? null : s.selectedTaskId }
+        const attention = { ...s.attention }
+        delete attention[id]
+        return { tasks, attention, selectedTaskId: s.selectedTaskId === id ? null : s.selectedTaskId }
       })
     )
     on('queue:state', (queue) => {
@@ -150,6 +178,20 @@ export const useStore = create<State>((set, get) => ({
     set({ selectedTaskId: id, drawerTab: tab ?? get().drawerTab })
   },
 
+  async openTask(t) {
+    if (get().projectId !== t.projectId) {
+      let p = get().projects.find((x) => x.id === t.projectId)
+      if (!p) {
+        await get().refreshProjects()
+        p = get().projects.find((x) => x.id === t.projectId)
+      }
+      if (!p) return
+      await get().openProject(p)
+    }
+    set({ view: 'board' })
+    get().selectTask(t.id, t.status === 'approval' ? 'plan' : t.status === 'review' ? 'reports' : 'log')
+  },
+
   setDrawerTab(drawerTab) {
     set({ drawerTab })
   },
@@ -191,7 +233,58 @@ export function applyTheme(theme: Settings['theme']): void {
   const root = document.documentElement
   if (theme === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', theme)
+  syncTitleBar()
 }
+
+let titleBarColors = ''
+
+/**
+ * Paints the system window buttons in the colors of the current theme, dimmed like the rest
+ * of the top bar while a drawer or dialog backdrop covers it.
+ */
+function syncTitleBar(): void {
+  const css = getComputedStyle(document.documentElement)
+  let bg = parseColor(css.getPropertyValue('--panel'))
+  let fg = parseColor(css.getPropertyValue('--muted'))
+  for (const el of document.querySelectorAll('.scrim, .modal')) {
+    const shade = parseColor(getComputedStyle(el).backgroundColor)
+    bg = blend(bg, shade)
+    fg = blend(fg, shade)
+  }
+  const colors = `${toHex(bg)} ${toHex(fg)}`
+  if (colors === titleBarColors) return
+  titleBarColors = colors
+  void call('window:titleBar', toHex(bg), toHex(fg)).catch(() => {})
+}
+
+type Rgba = [number, number, number, number]
+
+/** `#rgb`, `#rrggbb` or `rgb()/rgba()` → [r, g, b, a]. */
+function parseColor(value: string): Rgba {
+  const v = value.trim()
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v)?.[1]
+  if (hex) {
+    const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex
+    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16)).concat(1) as Rgba
+  }
+  const n = v.match(/[\d.]+/g)?.map(Number) ?? []
+  return [n[0] ?? 0, n[1] ?? 0, n[2] ?? 0, n[3] ?? 1]
+}
+
+/** Draws a translucent `top` over an opaque `base`. */
+function blend(base: Rgba, top: Rgba): Rgba {
+  const a = top[3]
+  return [0, 1, 2].map((i) => Math.round(base[i] * (1 - a) + top[i] * a)).concat(1) as Rgba
+}
+
+function toHex(c: Rgba): string {
+  return '#' + c.slice(0, 3).map((x) => x.toString(16).padStart(2, '0')).join('')
+}
+
+// "System" theme follows Windows, so the buttons must follow it too.
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncTitleBar)
+// Backdrops come and go with drawers and dialogs, which can be nested anywhere; the IPC call only fires on a real change.
+new MutationObserver(syncTitleBar).observe(document.getElementById('root') ?? document.body, { childList: true, subtree: true })
 
 export function isDark(): boolean {
   const attr = document.documentElement.getAttribute('data-theme')

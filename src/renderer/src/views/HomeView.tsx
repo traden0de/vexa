@@ -14,6 +14,9 @@ export function HomeView(): ReactNode {
   const checkEnv = useStore((s) => s.checkEnv)
   const run = useStore((s) => s.run)
   const [cloning, setCloning] = useState(false)
+  const attention = useStore((s) => s.attention)
+  const waitingBy: Record<number, number> = {}
+  for (const x of Object.values(attention)) waitingBy[x.projectId] = (waitingBy[x.projectId] ?? 0) + 1
 
   const openFolder = async (): Promise<void> => {
     const p = await run(() => call('projects:open'))
@@ -62,7 +65,10 @@ export function HomeView(): ReactNode {
                   onClick={() => run(() => openProject(p))}
                   onKeyDown={(e) => e.key === 'Enter' && run(() => openProject(p))}
                 >
-                  <b>{p.name}</b>
+                  <b>
+                    {p.name}
+                    {!!waitingBy[p.id] && <span className="pbadge">{t('attention_n', { n: waitingBy[p.id] })}</span>}
+                  </b>
                   <span className="path">{p.path}</span>
                   <span className="faint" style={{ fontSize: 12 }}>
                     {new Date(p.lastOpened).toLocaleString()}

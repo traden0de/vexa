@@ -7,6 +7,7 @@ import type {
   GitBranch,
   GitCommit,
   GitStatus,
+  ImageInput,
   LogEvent,
   NewTaskInput,
   Project,
@@ -14,6 +15,7 @@ import type {
   RateLimitInfo,
   Settings,
   Task,
+  TaskImage,
   TaskStatus,
   UpdateState,
   VersionInfo
@@ -32,8 +34,13 @@ export interface IpcContract {
   'tasks:create': (input: NewTaskInput) => Task
   'tasks:update': (
     id: number,
-    patch: Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>>
+    patch: Partial<Pick<Task, 'title' | 'description' | 'type' | 'priority' | 'plan' | 'discuss' | 'branch'>> & {
+      images?: ImageInput[]
+    }
   ) => Task
+  'tasks:images': (id: number) => TaskImage[]
+  /** Tasks waiting for the user, across all projects. */
+  'tasks:attention': () => Task[]
   /** Answers keyed by question id. */
   'tasks:answer': (id: number, answers: Record<string, string>) => Task
   'tasks:move': (id: number, status: TaskStatus) => Task
@@ -43,6 +50,8 @@ export interface IpcContract {
   'tasks:replan': (id: number, comment: string) => Task
   'tasks:accept': (id: number, bump: Bump) => Task
   'tasks:rework': (id: number, comment: string) => Task
+  /** Merge the base branch into the task branch and let the developer fix the conflicts. */
+  'tasks:resolveConflict': (id: number) => Task
   'tasks:reject': (id: number) => Task
   'tasks:retry': (id: number) => Task
   'tasks:stop': (id: number) => void
@@ -84,6 +93,13 @@ export interface IpcContract {
   'settings:set': (patch: Partial<Settings>) => Settings
 
   'shell:openPath': (path: string) => void
+
+  /** Brings the window to the front (clicking a notification). */
+  'window:focus': () => void
+  /** Taskbar badge: `png` is a data URL of the overlay icon, omitted when count is 0. */
+  'window:badge': (count: number, png?: string) => void
+  /** Colors of the system window buttons, following the app theme. */
+  'window:titleBar': (color: string, symbolColor: string) => void
 
   'update:state': () => UpdateState
   'update:check': () => UpdateState
